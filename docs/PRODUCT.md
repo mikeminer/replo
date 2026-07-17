@@ -26,4 +26,6 @@ Il motore sceglie i canali in base a buyer, settore e territorio, senza chiedere
 
 Italia, DACH e Francia hanno strategie e prove geografiche distinte. Una directory o un network non può diventare la fonte finale di un prospect: il risultato viene accettato solo dopo aver raggiunto il dominio aziendale e avervi trovato una persona pubblica con ruolo credibile. La risposta API espone i canali attivati, quelli che hanno prodotto risultati intermedi e la policy `official_company_sites_only`; la web app li mostra in italiano accanto ai risultati.
 
+Il budget di ricerca è adattivo: cresce da circa 36 a 53 secondi in base al numero di contatti richiesto. Le fonti lente hanno un limite individuale, mentre i siti aziendali vengono verificati in gruppi controllati fino a un massimo di 42 domini. In questo modo una singola fonte bloccata non consuma l'intera ricerca e le richieste da 20 o 30 contatti possono esplorare più del precedente tetto di 18 aziende.
+
 Free espone il flusso completo attuale. Pro è indicato come “in arrivo” e non è acquistabile finché liste salvate, template riutilizzabili, export e collaborazione non saranno effettivamente disponibili. Nessun piano richiede l'invio dalla piattaforma.

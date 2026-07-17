@@ -9,6 +9,8 @@ Replo is a site-to-prospect research and email-composition product:
 
 The primary workflow starts from the user's product URL, not a mailing list. It analyzes the site, infers the buyer context when needed and builds a territory/intent-aware source plan. Europages is used for EU discovery; WLW and XING company pages for DACH; Netcomm, ICE and Unioncamere for Italy; Viadeo company pages for France; and EU-Startups, Startup Europe, Codemotion or Developers Italia when the buyer context makes them relevant. These sources discover and qualify companies only: Replo follows them to official company domains, then crawls official company/team/contact pages. No third-party email finder is used.
 
+The search depth is adaptive: depending on the requested result count, the server receives a 36–53 second global research budget, checks individual sources with bounded timeouts, and verifies companies in batches of eight. Larger searches can inspect up to 42 official domains. The web SDK allows 65 seconds for the complete response, while targeted team/leadership queries and page prioritization surface named decision-makers before generic homepages.
+
 Osservatori.net and curated maps of Italian tech communities are context-only inputs for market language and taxonomy. They are never crawled for names or addresses. The UI exposes the selected channels, their role and whether they produced useful intermediate evidence, so a zero-result search is explainable rather than a generic dead end.
 
 False positives are deliberately rejected: generic mailboxes, role labels mistaken for names, publishers/directories used as contact sources, placeholder theme teams and companies outside the requested territory. Italy, DACH and France searches require domain or explicit locality evidence on the official site. Published abbreviated addresses such as `p.testa@azienda.it` are matched back to the full person name on the same official page; generated patterns remain visibly marked “da verificare” with reduced confidence.
@@ -35,7 +37,7 @@ Operational state is maintained in [OPS_STATE.md](./OPS_STATE.md).
 
 ## Production verification
 
-- API deployment `dpl_352o7XMJS2fWNhNVfzUnLkc2dCAU`: `READY`, aliased to `api.replo.eu`.
-- Web deployment `dpl_F7yZo1394t6gmYrxBUBdsuwU9jES`: `READY`, aliased to `replo.it`; the same-origin `/api/health` rewrite returned `ok`.
-- Automated gates: 20 tests, full TypeScript lint, no-finder guard, all workspace builds and smoke checks passed.
-- Chrome gate: the real production Italy search scanned 18 official sites and returned 4 named prospects. No `UX Researcher` false contact was present; all four source links were official company domains. “Copia email completa” produced a 588-character payload containing `Ciao Pasquale`, `Mario Rossi` and `Direttore commerciale · Azienda Demo`. No application-origin browser error was observed.
+- API deployment `dpl_3hFbxdmewanf9XnFowkotKNeZ2Nj`: `READY`, aliased to `api.replo.eu`.
+- Web deployment `dpl_3h9CiYjwrd4q33hczvGP7RMByxUh`: `READY`, aliased to `replo.it`; the same-origin `/api/health` rewrite returned `ok`.
+- Automated gates: 22 tests, full TypeScript lint, no-finder guard, all workspace builds and smoke checks passed.
+- Chrome gate: the real production Italy search at limit 20 scanned 40 official sites and returned 8 named prospects, versus 18 sites and 4 prospects before the depth increase. No `UX Researcher` false contact was present and every final source link was an official company domain. “Copia email completa” produced a 516-character payload containing `Ciao Uljan`, `Mario Rossi` and `Direttore commerciale · Azienda Demo`. The flow completed within the stated one-minute window and no application-origin browser error was observed.

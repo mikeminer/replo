@@ -226,4 +226,40 @@ describe("public-web discovery", () => {
     expect(result.prospects).toEqual(expect.arrayContaining([expect.objectContaining({ domain: "maison.fr", firstName: "Camille" })]));
     expect(result.prospects).not.toEqual(expect.arrayContaining([expect.objectContaining({ domain: "firma.de" })]));
   });
+
+  it("scans beyond the old 18-company ceiling when the user asks for more contacts", async () => {
+    const companyLinks = Array.from({ length: 26 }, (_, index) => `<li class="b_algo"><a href="https://company-${index + 1}.it/">Company ${index + 1}</a></li>`).join("");
+    const broadFetcher = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === "https://replo.test") return new Response(product);
+      if (url.includes("bing.com/search")) return new Response(companyLinks);
+      if (url.includes("duckduckgo.com/html") || url.includes("search.yahoo.com")) return new Response("");
+      if (/company-\d+\.it/.test(url)) return new Response(`<!doctype html><title>Software B2B Italia</title><meta name="description" content="Piattaforma software B2B con sede in Italia"><a href="/team">Team</a>`);
+      return new Response("");
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", audience: "software B2B", territory: "Italia", limit: 20 }, broadFetcher);
+
+    expect(result.sourcesScanned).toBe(26);
+    expect(result.sourcesScanned).toBeGreaterThan(18);
+  });
+
+  it("prioritizes a late official team result over broad company homepages", async () => {
+    const broadLinks = Array.from({ length: 42 }, (_, index) => `<li class="b_algo"><a href="https://broad-${index + 1}.it/">Broad ${index + 1}</a></li>`).join("");
+    const priorityFetcher = (async (input: string | URL | Request) => {
+      const url = String(input), decoded = decodeURIComponent(url);
+      if (url === "https://replo.test") return new Response(product);
+      if (url.includes("bing.com/search") && decoded.includes("team leadership")) return new Response(`<li class="b_algo"><a href="https://priority.it/team">Priority team</a></li>`);
+      if (url.includes("bing.com/search")) return new Response(broadLinks);
+      if (url.includes("duckduckgo.com/html") || url.includes("search.yahoo.com")) return new Response("");
+      if (url === "https://priority.it/team") return new Response(`<section><p>Sales Director</p><p>Giulia Bianchi</p><p>giulia.bianchi@priority.it</p></section>`);
+      if (url.startsWith("https://priority.it")) return new Response(`<!doctype html><title>Priority SaaS</title><meta name="description" content="Software B2B con sede in Italia"><a href="/team">Team</a>`);
+      if (/broad-\d+\.it/.test(url)) return new Response(`<!doctype html><title>Broad Software</title><meta name="description" content="Software B2B con sede in Italia">`);
+      return new Response("");
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", audience: "responsabili commerciali software B2B", territory: "Italia", limit: 20 }, priorityFetcher);
+
+    expect(result.prospects).toEqual(expect.arrayContaining([expect.objectContaining({ firstName: "Giulia", domain: "priority.it" })]));
+  });
 });

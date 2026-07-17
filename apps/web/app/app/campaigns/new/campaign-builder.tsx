@@ -111,8 +111,9 @@ export function CampaignBuilder() {
         </div>
         {state.error && <p className="notice error">{state.error}</p>}
         <button className="btn mint" disabled={pending}>
-          {pending ? "Analisi e ricerca in corso…" : "Trova contatti e prepara le email"}
+          {pending ? "Ricerca approfondita in corso…" : "Trova contatti e prepara le email"}
         </button>
+        <p className="muted search-timing-note">La ricerca approfondita può richiedere fino a circa un minuto: Replo continua ad ampliare le fonti finché trova abbastanza prove affidabili.</p>
       </form>
 
       {state.discovery && (

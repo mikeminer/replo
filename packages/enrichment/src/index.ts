@@ -389,11 +389,19 @@ async function prospectsFromCompany(companyUrl: string, fetcher: typeof fetch, r
 }
 
 export async function discoverPublicProspects(input: { url: string; audience?: string; territory?: string; limit?: number }, fetcher: typeof fetch = fetch) {
+  const limit = Math.min(Math.max(input.limit ?? 12, 1), 30);
+  const discoveryBudgetMs = Math.min(55_000, 32_000 + limit * 700);
+  const expansionLimit = Math.min(18, Math.max(10, Math.ceil(limit * 0.8)));
+  const companyLimit = Math.min(42, Math.max(24, limit * 2));
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(new Error("Discovery time budget reached")), 18_000);
+  const timer = setTimeout(() => controller.abort(new Error("Discovery time budget reached")), discoveryBudgetMs);
   const boundedFetcher = ((resource: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => fetcher(resource, { ...init, signal: init?.signal ? AbortSignal.any([controller.signal, init.signal]) : controller.signal })) as typeof fetch;
+  const timedFetcher = (timeoutMs: number) => ((resource: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+    const requestSignal = AbortSignal.timeout(timeoutMs);
+    return boundedFetcher(resource, { ...init, signal: init?.signal ? AbortSignal.any([requestSignal, init.signal]) : requestSignal });
+  }) as typeof fetch;
   try {
-    const analysis = await analyzeWebsite(input.url, boundedFetcher), sourceHost = hostOf(analysis.url), limit = Math.min(Math.max(input.limit ?? 12, 1), 30);
+    const analysis = await analyzeWebsite(input.url, timedFetcher(12_000)), sourceHost = hostOf(analysis.url);
     const requestedAudience = input.audience?.trim() || "", inferred = inferredBuyer(analysis), requestedTerms = audienceTerms(requestedAudience);
     const researchIntent = requestedTerms.length ? requestedAudience : inferred;
     const relevanceTerms = audienceTerms(researchIntent), coreIntent = relevanceTerms.join(" ") || researchIntent, preferredRoles = desiredRoleTerms(requestedAudience || researchIntent);
@@ -406,7 +414,9 @@ export async function discoverPublicProspects(input: { url: string; audience?: s
       `${marketScope} ${coreIntent} azienda`,
       `${marketScope} ${coreIntent} ${roleQuery}`,
       `${coreIntent} companies ${territory}`,
-    ])].slice(0, 3);
+      `${marketScope} ${coreIntent} team leadership ${roleQuery}`,
+      `${marketScope} ${coreIntent} "chi siamo" ${roleQuery}`,
+    ])].slice(0, 5);
     const searchRequests: Array<{ url: string; channelId?: string }> = [
       ...channels.map((channel) => ({ url: `https://search.yahoo.com/search?p=${encodeURIComponent(channel.query(coreIntent, territory))}`, channelId: channel.id })),
       ...queries.flatMap((value) => [
@@ -415,7 +425,8 @@ export async function discoverPublicProspects(input: { url: string; audience?: s
         { url: `https://search.yahoo.com/search?p=${encodeURIComponent(value)}` },
       ]),
     ];
-    const searchRows = await Promise.allSettled(searchRequests.map(async (request) => ({ ...(await fetchHtml(request.url, boundedFetcher)), channelId: request.channelId })));
+    const searchFetcher = timedFetcher(10_000);
+    const searchRows = await Promise.allSettled(searchRequests.map(async (request) => ({ ...(await fetchHtml(request.url, searchFetcher)), channelId: request.channelId })));
     const foundResults: Array<{ url: string; channelId?: string }> = [], channelResults = new Map<string, number>();
     for (const row of searchRows) if (row.status === "fulfilled") for (const url of searchUrls(row.value.html)) {
       const channelId = channelForUrl(url)?.id ?? row.value.channelId;
@@ -432,9 +443,10 @@ export async function discoverPublicProspects(input: { url: string; audience?: s
       const { url } = result, sourceChannel = channelForUrl(url), candidateHost = registrableHost(hostOf(url));
       if (!candidateHost || candidateHost === registrableHost(sourceHost) || (!sourceChannel && plausibleCompanyPage(url)) || seenExpansionHosts.has(candidateHost)) continue;
       seenExpansionHosts.add(candidateHost); expansionTargets.push({ url, channelId: sourceChannel?.id ?? result.channelId });
-      if (expansionTargets.length >= 8) break;
+      if (expansionTargets.length >= expansionLimit) break;
     }
-    const expansionRows = await Promise.allSettled(expansionTargets.map(async (target) => ({ ...(await fetchHtml(target.url, boundedFetcher)), channelId: target.channelId })));
+    const expansionFetcher = timedFetcher(12_000);
+    const expansionRows = await Promise.allSettled(expansionTargets.map(async (target) => ({ ...(await fetchHtml(target.url, expansionFetcher)), channelId: target.channelId })));
     const expandedUrls: string[] = [];
     for (const row of expansionRows) if (row.status === "fulfilled") {
       const externalLinks = prioritizedExternalCompanyLinks(row.value.html, row.value.url);
@@ -442,16 +454,27 @@ export async function discoverPublicProspects(input: { url: string; audience?: s
       expandedUrls.push(...externalLinks);
     }
     const companyUrls: string[] = [], seenCompanies = new Set<string>();
-    const directUrls = orderedResults.filter(({ url }) => !channelForUrl(url) && plausibleCompanyPage(url)).map(({ url }) => url);
+    const directUrls = orderedResults
+      .filter(({ url }) => !channelForUrl(url) && plausibleCompanyPage(url))
+      .map(({ url }) => url)
+      .sort((left, right) => {
+        const pageScore = (value: string) => /\/(?:direzione|founders?|leadership|management|our-team|people|persone|squadra|staff|team)(?:\/|$)/i.test(new URL(value).pathname) ? 2 : new URL(value).pathname === "/" ? 0 : 1;
+        return pageScore(right) - pageScore(left);
+      });
     for (const url of [...directUrls, ...expandedUrls]) {
       const companyHost = registrableHost(hostOf(url));
       if (!companyHost || channelForUrl(url) || companyHost === registrableHost(sourceHost) || seenCompanies.has(companyHost)) continue;
       seenCompanies.add(companyHost); companyUrls.push(url);
-      if (companyUrls.length >= 18) break;
+      if (companyUrls.length >= companyLimit) break;
     }
     const prospects: PublicProspect[] = [];
-    const rows = await Promise.allSettled(companyUrls.map((url) => prospectsFromCompany(url, boundedFetcher, relevanceTerms, preferredRoles, territory)));
-    for (const row of rows) if (row.status === "fulfilled") for (const prospect of row.value) if (!prospects.some((x) => x.email === prospect.email)) prospects.push(prospect);
+    const rows: PromiseSettledResult<PublicProspect[]>[] = [], companyFetcher = timedFetcher(12_000);
+    for (let start = 0; start < companyUrls.length && !controller.signal.aborted; start += 8) {
+      const batchRows = await Promise.allSettled(companyUrls.slice(start, start + 8).map((url) => prospectsFromCompany(url, companyFetcher, relevanceTerms, preferredRoles, territory)));
+      rows.push(...batchRows);
+      for (const row of batchRows) if (row.status === "fulfilled") for (const prospect of row.value) if (!prospects.some((candidate) => candidate.email === prospect.email)) prospects.push(prospect);
+      if (prospects.length >= limit) break;
+    }
     const roleScore = (prospect: PublicProspect) => preferredRoles.filter((term) => normalizedText(prospect.role ?? "").includes(term)).length;
     const rankedAll = prospects.sort((left, right) => roleScore(right) * 4 + (right.verification === "valid" ? 2 : 0) - (roleScore(left) * 4 + (left.verification === "valid" ? 2 : 0)));
     const roleMatched = rankedAll.filter((prospect) => roleScore(prospect) > 0), ranked = roleMatched.length ? roleMatched : rankedAll;
@@ -464,8 +487,8 @@ export async function discoverPublicProspects(input: { url: string; audience?: s
       analysis,
       query,
       prospects: diversified,
-      sourcesScanned: companyUrls.length,
-      partial: searchRows.some((row) => row.status === "rejected") || expansionRows.some((row) => row.status === "rejected") || rows.some((row) => row.status === "rejected"),
+      sourcesScanned: rows.length,
+      partial: controller.signal.aborted || searchRows.some((row) => row.status === "rejected") || expansionRows.some((row) => row.status === "rejected") || rows.some((row) => row.status === "rejected"),
       strategy: {
         channels: channels.map(({ id, label, category, purpose }) => ({ id, label, category, purpose, resultsFound: (channelResults.get(id) ?? 0) > 0 })),
         contextSources,
