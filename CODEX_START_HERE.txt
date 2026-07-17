@@ -1,0 +1,23 @@
+================================================================================
+PASTE THIS AS THE FIRST MESSAGE TO CHATGPT CODEX (with repo open)
+================================================================================
+
+Read and execute CODEX_MASTER_PROMPT.md and AGENTS.md in this repository end-to-end.
+
+You are an autonomous senior full-stack engineer. Build the complete Replo MVP in https://github.com/mikeminer/replo until it is implemented, tested, and documented.
+
+Hard requirements:
+1) Monorepo: apps/api (replo.eu API platform) + apps/web (replo.it app that ONLY calls the API via SDK/HTTP — no direct DB business logic sharing for GTM ops).
+2) ZERO third-party email finders / ZERO waterfall fallback (no Hunter, LeadMagic, Findymail, Apollo, etc.). Proprietary enrichment only in packages/enrichment.
+3) Free plan shows replies exist but content is LOCKED/redacted server-side; monthly Pro subscription unlocks full replies, respond, book.
+4) Simulated email send + simulate-reply for demo/tests; mock LLM when no API key.
+5) Postgres + Drizzle, Stripe or BILLING_MOCK, docker-compose, CI, seed user demo@replo.it / demo1234.
+6) Work phases 0→5 without stopping. Keep docs/PROGRESS.md updated. Finish only when pnpm test, pnpm build, and pnpm smoke pass. Write docs/SHIP_REPORT.md.
+
+Start Phase 0 now: scaffold monorepo, docker-compose, drizzle schema, then continue until DONE criteria in CODEX_MASTER_PROMPT.md §1 are all satisfied.
+
+================================================================================
+OPTIONAL: if Codex supports long agents, also say:
+================================================================================
+
+Do not ask me for confirmation between phases. If secrets are missing, use mocks and .env.example and continue. Never implement external email broker APIs.
