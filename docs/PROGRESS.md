@@ -1,8 +1,8 @@
 # Progress
 
-- [x] Phase 0 — pnpm monorepo, strict TypeScript, Compose PostgreSQL, Drizzle schema, CI
-- [x] Phase 1 — owned resolution, public-page extraction, pattern scoring, MX inspection, finder guard
-- [x] Phase 2 — Hono API, tenant keys, quotas, jobs, campaigns, redacted replies, OpenAPI
-- [x] Phase 3 — Smartlead lifecycle client, batching, accounts, webhooks, respond, bounce auto-pause
-- [x] Phase 4 — SDK-only Next.js web, campaign builder, Free lock, billing entry, deliverability dashboard
-- [ ] Phase 5 — deployment/DNS/DMARC and local verification complete; Smartlead + Stripe live ops await human CAPTCHA/password selection
+- [x] Phase 0 — repository, constraints, domains and operator state audited
+- [x] Phase 1 — public-site analysis and progressive prospect discovery with role, provenance, false-positive and territory controls
+- [x] Phase 2 — Hono API, tenant keys, research endpoints and OpenAPI
+- [x] Phase 3 — historical provider lifecycle code retained and isolated from the current product surface
+- [x] Phase 4 — SDK-only Next.js web: site → public prospects → complete copy-ready emails
+- [x] Phase 5 — production domains and discovery transport deployed and verified in Chrome; product no longer depends on ESP, warmup, reply webhooks or Stripe activation

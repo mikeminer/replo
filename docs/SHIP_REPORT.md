@@ -2,45 +2,38 @@
 
 ## Outcome
 
-Replo is implemented and deployed as two independent surfaces:
+Replo is a site-to-prospect research and email-composition product:
 
 - Web: `https://replo.it` — Next.js, consuming the API only through `@replo/sdk`
-- API: `https://api.replo.eu` — Hono, Smartlead production adapter, event ingress, tenant enforcement, and server-side reply redaction
+- API: `https://api.replo.eu` — Hono research and owned-resolution surface
 
-The campaign builder now starts from the product URL, not an uploaded mailing list. It analyzes the site, derives a search intent, searches the public web, crawls official company/team/contact pages, and presents sourced prospects for review. No third-party email finder is used. Emails visibly published by the company are preselected; pattern-resolved candidates are explicitly risky and opt-in.
+The primary workflow starts from the user's product URL, not a mailing list. It analyzes the site, infers the buyer context when needed, runs progressive public-web searches, follows list/editorial results only to discover official company domains, and crawls official company/team/contact pages. It ranks decision makers by the requested role and keeps territory evidence strict. No third-party email finder is used.
 
-## Real deliverability Day 1
+False positives are deliberately rejected: generic mailboxes, non-person labels, publishers/directories used as contact sources, placeholder theme teams and companies outside the requested territory. Published abbreviated addresses such as `p.testa@azienda.it` are matched back to the full person name on the same official page; generated patterns remain visibly marked “da verificare” with reduced confidence.
 
-The production delivery path is complete in code: Smartlead campaign creation, conservative settings, managed account attachment, 400-lead batching, sequences, start/pause, reply-thread response, webhook registration, reply/bounce/unsubscribe normalization, duplicate suppression, daily/monthly quotas, and automatic provider pause above the bounce threshold. Mock sending is isolated to CI/local mode.
+For every prospect, the web app now generates a complete visible draft: destination address, recipient name and company, subject, personalized body, sender name/signature and source evidence. The user can copy the entire email or open it via `mailto:` in the company's existing email client.
 
-The live provider loop is not yet evidenced because Smartlead has no existing session or credential on this machine. Chrome reached the 14-day signup page, but account creation requires a human CAPTCHA and a user-selected password. Therefore production remains deliberately set to `SEND_PROVIDER=mock` until a valid Smartlead key and mailbox IDs exist; it is not misrepresented as live delivery.
+## Product decision: no platform sending
 
-Once the Smartlead CAPTCHA/password gate is cleared in the preserved Chrome tab, the remaining operator sequence is executable without code changes: obtain key, set Vercel secrets, add provider-issued DKIM/tracking records in the already-authenticated Register.it session, enable warmup, register the deployed webhook, and run the one-address owned-inbox live smoke/reply loop.
+Campaign launch, managed mailbox status, reply locking, inbox and deliverability controls have been removed from the user-facing web product. Historical Smartlead/provider code remains isolated in the backend but is dormant and is no longer a Day-1 dependency. The current workflow requires no ESP key, warmup, DKIM/tracking record, reply webhook or test send.
 
-## Verified gates
+Pricing no longer sells reply unlocks or sending volume. Free exposes the current workflow; Pro is explicitly labeled “in arrivo” and has no checkout until its research/team features exist.
 
-- `pnpm lint`: pass
-- Test suite: pass — 9 tests across real page analysis/public discovery, sender contract, API redaction, configured-workspace launch, and bounce pause
-- `pnpm build`: pass — all packages, API, and production Next.js build
-- `pnpm smoke`: pass — research → seed → resolve → launch → Free redaction → mock billing upgrade → full reply
-- Finder hostname guard: pass
-- Vercel production deployments: READY
-- `https://replo.it`: HTTP 200
-- `https://api.replo.eu/health`: HTTP 200
-- `https://api.replo.eu/v1/openapi.json`: HTTP 200
-- Production browser GTM flow: pass — 6 prospects from 7 sources, each with public-source links and confidence state
-- Vercel custom-domain verification: pass for both domains
-- Authoritative DNS: Vercel records and DMARC confirmed directly on `ns1.register.it`
-- Deployed API error scan after final request: clean
+## Acceptance gates
 
-## Security and product controls
+- A mailing list is never requested.
+- Recipient and sender names are present in every generated message.
+- “Copia email completa” includes destination, recipient name/company, subject and body in one clipboard payload.
+- “Apri nella mia email” hands the prefilled draft to the user's email client without sending from Replo.
+- Every prospect retains a public source link and confidence state.
+- `apps/web` reaches the backend through `@replo/sdk`, not API internals.
+- Old inbox and deliverability URLs redirect to the new research flow.
 
-- API keys are generated with `rk_test_` form and stored only as SHA-256 hashes.
-- Production uses one sensitive workspace key shared by the web server and API; the API hashes it before lookup and never exposes it to the browser.
-- Free reply identity/body are blanked by the API DTO; Pro receives full stored data.
-- Dev reply simulation is gated by both mock provider mode and an explicit development flag; production flag is false.
-- Provider webhook uses a shared secret or HMAC, event idempotency, and bounce-rate auto-pause.
-- Existing MX/SPF were preserved while DMARC was added; provider DKIM values are deferred rather than invented.
-- Transactional mail is separated behind a Resend adapter.
+Operational state is maintained in [OPS_STATE.md](./OPS_STATE.md).
 
-Operational evidence is maintained in [OPS_STATE.md](./OPS_STATE.md). The deliverability procedure used for browser operations is in [DELIVERABILITY_RUNBOOK.md](./DELIVERABILITY_RUNBOOK.md).
+## Production verification
+
+- API deployment `dpl_4J9j6uzGN8KHnnhCkArwb7iJWtpS`: `READY`, aliased to `api.replo.eu`.
+- Web deployment `dpl_5H2fqWUJkCdUW4zUQZs1dxNVutD1`: `READY`, aliased to `replo.it`.
+- Automated gates: 16 tests, full TypeScript lint, no-finder guard and all workspace builds passed.
+- Chrome gate: a real Italy-scoped search returned named prospects with official sources; the copied payload contained recipient, name, company, subject, personalized body, `Mario Rossi` and `Direttore commerciale · Azienda Demo`; inbox and deliverability legacy URLs redirected to the research flow.

@@ -1,1 +1,21 @@
-export default function Pricing(){return <main><section className="hero"><div><div className="eyebrow">Simple monthly plans</div><h1>Start free. Unlock conversations.</h1></div></section><div className="grid"><article className="card"><h2>Free</h2><div className="stat">€0</div><p>40 real sends per month · 20/day</p><p>Reply count and sentiment</p><p>Reply content stays locked</p><a className="btn" href="/app">Start free</a></article><article className="card"><span className="badge">Recommended</span><h2>Pro</h2><div className="stat">Monthly</div><p>Higher safe sending caps</p><p>Full reply inbox and response</p><p>Drafts, booking and export</p><a className="btn mint" href="/api/billing/checkout">Unlock Pro</a></article></div></main>}
+export default function Pricing() {
+  return (
+    <main>
+      <section className="hero pricing-hero">
+        <div><div className="eyebrow">Piani semplici</div><h1>La ricerca parte gratis.</h1><p className="lead">Nessun costo per caselle, riscaldamento o invii: usi l&apos;email aziendale che hai già.</p></div>
+      </section>
+      <div className="grid pricing-grid">
+        <article className="card">
+          <h2>Gratis</h2><div className="stat">€0</div>
+          <p>Analisi del sito</p><p>Ricerca da fonti pubbliche</p><p>Email complete con nomi e firma</p><p>Copia o apertura nel tuo programma di posta</p>
+          <a className="btn mint" href="/app/campaigns/new">Inizia gratis</a>
+        </article>
+        <article className="card future-plan">
+          <span className="badge">In arrivo</span><h2>Professionale</h2><div className="stat">Per gruppi di lavoro</div>
+          <p>Più ricerche e liste salvate</p><p>Modelli e tono riutilizzabili</p><p>Esportazione e collaborazione</p><p>Mai invio obbligatorio dalla piattaforma</p>
+          <span className="muted">Non ancora acquistabile</span>
+        </article>
+      </div>
+    </main>
+  );
+}

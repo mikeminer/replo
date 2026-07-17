@@ -8,7 +8,7 @@
     "dev": "pnpm --parallel --filter @replo/api --filter @replo/web dev",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "smoke": "tsx scripts/smoke.ts",
+    "smoke": "node --use-system-ca --import tsx scripts/smoke.ts",
     "smoke:live": "tsx scripts/smoke-live.ts",
     "verify:esp": "tsx scripts/verify-esp-connection.ts"
   },
