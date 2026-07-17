@@ -1,10 +1,14 @@
 # CODEX MASTER PROMPT — Replo (COMPLETE PRODUCT — REAL DELIVERABILITY DAY 1)
 
-You are an autonomous senior full-stack engineer + email deliverability implementer.  
-Build the **entire finished Replo product** in this repository until it is **production-capable for real outbound email**, not a demo with fake sends.
+You are an autonomous senior full-stack engineer + email deliverability operator + DevOps agent.  
+Build the **entire finished Replo product** in this repository until it is **live-capable with real outbound email**, not a demo with fake sends.
 
 **Do not stop** at scaffolding, mocks-as-product, or “TODO: integrate ESP later”.  
-**Real deliverability is a Day-1 hard requirement** of the shipped product path.
+**Do not stop** at “user must configure Smartlead/DNS manually”.  
+**You have Google Chrome / browser access — use it to do ALL operator work yourself.**
+
+**Real deliverability is a Day-1 hard requirement** of the shipped product path.  
+**You own code + browser ops + verification until the live path works.**
 
 **Repository:** https://github.com/mikeminer/replo  
 **Domains:**
@@ -39,16 +43,22 @@ Build the **entire finished Replo product** in this repository until it is **pro
      - pause campaign on bounce-rate threshold
      - daily send caps + ramp settings
      - unsubscribe / List-Unsubscribe headers where provider allows
-   - SPF / DKIM / DMARC / custom tracking domain: **runbook + API fields + UI checklist** so ops can go live Day 1.
+   - SPF / DKIM / DMARC / custom tracking domain: **you configure them via browser** when credentials/domains exist; also document in runbook.
 5. **Mocks are for CI only — not the product**
    - Unit/CI may use a `SenderPort` fake when `SEND_PROVIDER=mock`.
    - With `SEND_PROVIDER=smartlead` (or `instantly`) + valid keys, **real API calls** must work.
    - Shipping “only mock sender” = **NOT DONE**.
-6. **Finish criteria**
+6. **You do everything (browser-first ops)**
+   - Use Chrome/browser tools to: create ESP accounts, generate API keys, configure webhooks, copy DNS records into the DNS host, verify domain status, enable warmup, create mailboxes, send a real test email to an owned inbox, confirm webhook delivery.
+   - Read secrets from environment / `.env` / OS keychain / user profile if already present; write results back to `.env.local` (gitignored) and `docs/OPS_STATE.md`.
+   - **Never** leave a step as “tell the human to click in Smartlead”.
+   - Only hard-stop if a step requires **payment with no card on file** or a secret that literally does not exist anywhere you can access — then record the exact blocker in `docs/BLOCKERS.md` and continue all other work; retry browser path after documenting the minimum missing secret name (not a tutorial dump).
+7. **Finish criteria**
    - `pnpm test`, `pnpm build`, `pnpm smoke` pass in mock mode.
-   - `pnpm smoke:live` implemented and documented; passes when live keys present.
-   - `docs/DELIVERABILITY_RUNBOOK.md` complete.
-   - `docs/SHIP_REPORT.md` attests real-send path.
+   - Full ESP client implemented.
+   - Browser ops completed as far as credentials allow; `docs/OPS_STATE.md` shows keys present / webhook URL set / DNS status.
+   - `pnpm smoke:live` passes when keys exist (real test to owned email).
+   - `docs/DELIVERABILITY_RUNBOOK.md` + `docs/SHIP_REPORT.md` complete.
 
 ---
 
@@ -450,52 +460,132 @@ bootstrap → research → seed → resolve → launch(mock) → simulate reply 
 
 ---
 
-## 14. DELIVERABILITY_RUNBOOK.md (must write)
+## 14. DELIVERABILITY_RUNBOOK.md (must write) + EXECUTE IT
 
-Must include:
-1. Create Smartlead account + API key  
-2. Purchase/configure sending domains (not customer primary domain for free tier)  
-3. DNS records copy-paste tables (SPF/DKIM/DMARC/tracking)  
-4. Create 2+ mailboxes, enable warmup 14 days recommendation  
-5. Configure webhook URL `https://api.replo.eu/v1/webhooks/esp/...`  
-6. Set env on Vercel/Fly  
+Write the runbook **and perform every step yourself in Chrome/CLI**. The runbook is the script you follow, not instructions for a human.
+
+Execute:
+1. Create/login Smartlead (or Instantly) + API key → `.env.local`  
+2. Configure sending domains / mailboxes (dedicated send domain preferred)  
+3. Apply DNS (SPF/DKIM/DMARC/tracking) at the DNS host in browser  
+4. Enable warmup on 2+ mailboxes  
+5. Configure webhook URL (deployed API or your tunnel)  
+6. Set env on Vercel/Fly if authenticated  
 7. Run `pnpm scripts/verify-esp-connection`  
-8. First live campaign checklist (volume ramp)  
-9. Incident: high bounce → auto-pause behavior  
-10. Separation transactional vs cold  
+8. First live test send to owned inbox + reply ingest  
+9. Confirm auto-pause config for high bounce  
+10. Separate transactional (Resend) vs cold domains  
+
+Log outcomes in `docs/OPS_STATE.md`.
 
 ---
 
-## 15. Autonomy rules
+## 15. Browser autonomy — YOU DO ALL OPS (Chrome)
 
-1. Work until DONE §1 complete — including **real ESP integration code + runbook**.  
-2. Do not ask for confirmation between phases.  
-3. If live keys are absent in the environment, still **implement the full Smartlead client** and pass mock CI; document exact env to go live.  
-4. **Do not** replace Smartlead with “simulate only” as the final architecture.  
-5. **Do not** add Hunter/LeadMagic/etc.  
-6. Prefer complete vertical features over unfinished “enterprise” extras.  
-7. Update `docs/PROGRESS.md` continuously.  
-8. Final `docs/SHIP_REPORT.md` must contain section **“Real deliverability Day 1”** listing: provider chosen, endpoints used, webhook events handled, how to go live in &lt;1 day with domains ready.
+You have **Google Chrome / browser automation**. Treat ops as part of the build, not as human homework.
+
+### 15.1 Mandatory browser workflow (execute yourself)
+
+When code reaches Phase 3+, open Chrome and perform:
+
+| # | Task | How |
+|---|------|-----|
+| 1 | ESP signup/login | Smartlead (preferred) or Instantly — use existing session/cookies if logged in; else use credentials from env `SMARTLEAD_EMAIL` / `SMARTLEAD_PASSWORD` or promptless discovery of `.env` |
+| 2 | Create / copy **API key** | Dashboard → API → paste into `.env.local` as `SMARTLEAD_API_KEY` |
+| 3 | Create sending domain(s) / mailboxes | In ESP UI + Google Workspace / Microsoft 365 / provider-recommended mailbox host |
+| 4 | Copy DNS records | From ESP domain setup UI |
+| 5 | Apply DNS | Browser into Cloudflare / Namecheap / registrar DNS for `replo.it` / `replo.eu` / dedicated send domain — add SPF, DKIM, DMARC, tracking CNAME exactly as shown |
+| 6 | Wait/verify DNS | Re-check ESP “verified” status; refresh until green or document TTL wait in OPS_STATE with next retry |
+| 7 | Enable **warmup** on mailboxes | Toggle in ESP UI |
+| 8 | Configure **webhook** URL | Point to your deployed or tunneled API: `/v1/webhooks/esp/...` — if local, start tunnel (cloudflared/ngrok) yourself via CLI + browser auth if needed |
+| 9 | Attach mailboxes to test campaign | Via API client you built + confirm in UI |
+| 10 | **Real test send** | To `LIVE_TEST_LEAD_EMAIL` (must be owned); open recipient inbox in Chrome (Gmail) and confirm arrival |
+| 11 | **Real test reply** | From that inbox reply; confirm Replo webhook stored reply; verify free redaction vs Pro unlock in app |
+| 12 | Stripe | Browser: Stripe Dashboard test mode — create Product “Replo Pro Monthly”, copy price id to env; or CLI `stripe listen` if installed |
+| 13 | Resend/Postmark | Browser create API key for transactional mail if needed |
+
+### 15.2 Secrets discovery order (do not nag)
+
+1. Existing `.env`, `.env.local`, `.env.development`  
+2. Environment variables in shell  
+3. Browser already-logged-in sessions (Cloudflare, Google, Smartlead, GitHub, Vercel, Stripe)  
+4. Password manager / OS only if already integrated — never invent passwords  
+5. If missing **only** a card payment step: write `docs/BLOCKERS.md` with single line `NEED: payment method on Smartlead` and continue coding; do not dump long manuals  
+
+### 15.3 Deploy yourself when possible
+
+Use browser + CLI:
+
+- **GitHub**: push branches if remote available  
+- **Vercel / Fly / Railway**: if user logged in Chrome or `vercel` CLI authenticated, deploy `apps/api` + `apps/web`, set env vars from `.env.local`  
+- Configure production webhook URL to deployed API  
+- Re-run live smoke against production URL  
+
+If no deploy auth exists, run full stack locally + tunnel for webhooks; still complete real send/reply loop.
+
+### 15.4 Evidence pack (required in repo, gitignore secrets)
+
+Create `docs/OPS_STATE.md` (no secrets in plaintext — redact keys to last 4 chars):
+
+```markdown
+# OPS STATE
+- ESP: smartlead | status: logged_in | api_key: ...xxxx
+- Domains: send.example.com | SPF: ok | DKIM: ok | DMARC: pending
+- Mailboxes: n=2 | warmup: on
+- Webhook: https://.../v1/webhooks/esp | last_event_at: ...
+- Live test send: pass/fail | message_id: ...
+- Live test reply ingested: pass/fail
+- Stripe price: ...
+- Deploy URL: ...
+```
+
+Screenshots optional in `docs/evidence/` (no secrets visible).
+
+### 15.5 Forbidden phrases (do not output these as final guidance)
+
+- “You need to go to Smartlead and…”  
+- “Add these DNS records manually…”  
+- “Ask the user to configure webhooks…”  
+
+Instead: **do it in Chrome**, then report status in OPS_STATE.
 
 ---
 
-## 16. Explicit non-goals
+## 16. Autonomy rules
+
+1. Work until DONE §1 complete — code **and** browser ops **and** real send/reply proof when credentials allow.  
+2. **Do not ask for confirmation between phases.**  
+3. **Do not ask the user to perform dashboard clicks you can do in Chrome.**  
+4. Implement full Smartlead/Instantly client regardless; then **use browser to obtain keys and finish go-live**.  
+5. **Do not** replace ESP with simulate-only as the product architecture.  
+6. **Do not** add Hunter/LeadMagic/Findymail/Apollo finders.  
+7. Prefer complete vertical features.  
+8. Update `docs/PROGRESS.md` continuously.  
+9. Final `docs/SHIP_REPORT.md` must include **“Real deliverability Day 1”** + link to OPS_STATE evidence.  
+10. If blocked only by payment, finish 100% of software + local tunnel demo + BLOCKERS.md; do not idle.
+
+---
+
+## 17. Explicit non-goals
 
 - Building our own MTA/Postfix from scratch (use Smartlead/Instantly)  
 - Global contact data farm  
 - LinkedIn automation  
 - Multi-region active-active  
 - Fine-tuned foundation LLM  
+- Asking humans to do browser ops you can do  
 
 ---
 
-## 17. START NOW
+## 18. START NOW
 
-1. Scaffold monorepo  
-2. Implement phases 0→5  
-3. Smartlead (or Instantly) **complete** sender  
-4. Real webhook ingest  
-5. Web product + Pro unlock  
-6. Tests + runbook + ship report  
+1. Scaffold monorepo + DB  
+2. Implement enrichment + API + web  
+3. Implement **complete** Smartlead/Instantly sender  
+4. **Open Chrome** → ESP + DNS + webhooks + warmup + Stripe as available  
+5. Real test send + reply loop  
+6. Deploy if auth available  
+7. `pnpm test` / `build` / `smoke` / `smoke:live`  
+8. PROGRESS + OPS_STATE + SHIP_REPORT  
 
-**BEGIN. Do not stop until the product is complete with a production real-deliverability path.**
+**BEGIN. You write the code, you drive Chrome, you finish the product — including real deliverability.**

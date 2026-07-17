@@ -4,22 +4,29 @@ PASTE THIS AS THE FIRST MESSAGE TO CHATGPT CODEX
 
 Read and fully execute CODEX_MASTER_PROMPT.md and AGENTS.md end-to-end.
 
-Build the COMPLETE Replo product (not a demo stub) in this repo.
+You do EVERYTHING yourself — code AND browser ops. You have Google Chrome access.
 
-CRITICAL — REAL DELIVERABILITY DAY 1:
-- Implement a FULL Smartlead API integration (preferred) or full Instantly integration in packages/sending.
-- Production path SEND_PROVIDER=smartlead must create campaigns, push leads, set sequences, start sending REAL email, and ingest REAL reply + bounce webhooks.
-- Free tier: limited REAL sends from Replo-managed mailboxes; reply CONTENT redacted server-side until Pro monthly subscription.
-- Mock sender is ONLY for CI when keys are missing — shipping simulate-only as the product is FAILURE.
-- Write docs/DELIVERABILITY_RUNBOOK.md (DNS SPF/DKIM/DMARC, warmup, webhooks, ramp).
-- Implement scripts/verify-esp-connection.ts and pnpm smoke:live (only to LIVE_TEST_LEAD_EMAIL you control).
+Build the COMPLETE Replo product with REAL DELIVERABILITY DAY 1:
 
-Also required:
-1) apps/api = replo.eu platform; apps/web = replo.it consuming API only via SDK/HTTP.
-2) ZERO third-party email FINDERS (no Hunter/LeadMagic/Findymail/Apollo find). Proprietary packages/enrichment only.
-3) Stripe Pro monthly (or BILLING_MOCK) unlocks full replies + respond + book.
-4) Phases 0→5 without stopping. docs/PROGRESS.md updates. Finish when pnpm test, build, smoke pass AND real ESP client is complete. docs/SHIP_REPORT.md must include "Real deliverability Day 1".
+CODE:
+- apps/api = replo.eu platform; apps/web = replo.it using API only via SDK/HTTP
+- packages/enrichment = proprietary email find only (NO Hunter/LeadMagic/Findymail/Apollo)
+- packages/sending = FULL Smartlead client (preferred) or full Instantly — not a stub
+- Real reply + bounce webhooks; bounce auto-pause; free reply redaction; Pro monthly unlock
+- Mock sender ONLY for CI when keys missing
 
-Start Phase 0 now. No confirmation between phases. Never add email broker finders. Never replace real ESP with simulate-only architecture.
+CHROME / BROWSER (mandatory — do not delegate to human):
+- Log into or sign up Smartlead/Instantly; create API key; write to .env.local
+- Create mailboxes/domains; copy DNS; apply DNS in Cloudflare/registrar yourself
+- Enable warmup; configure webhooks (use tunnel if local)
+- Stripe test product/price if needed
+- Deploy to Vercel/Fly if CLI or browser session already authenticated
+- Send REAL test email to LIVE_TEST_LEAD_EMAIL (owned inbox); reply; confirm ingest in app
+- Record status in docs/OPS_STATE.md (redact secrets). Only if payment is impossible without a card, write docs/BLOCKERS.md one-liner and continue all other work.
 
+FORBIDDEN final answers like "you should go to Smartlead and configure…". YOU configure it.
+
+Phases 0→5 without confirmation. Finish when pnpm test, build, smoke pass AND real ESP path is implemented AND browser ops are completed as far as credentials allow. docs/SHIP_REPORT.md must include "Real deliverability Day 1".
+
+START PHASE 0 NOW.
 ================================================================================
