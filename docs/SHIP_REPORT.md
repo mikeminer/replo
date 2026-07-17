@@ -7,6 +7,8 @@ Replo is implemented and deployed as two independent surfaces:
 - Web: `https://replo.it` — Next.js, consuming the API only through `@replo/sdk`
 - API: `https://api.replo.eu` — Hono, Smartlead production adapter, event ingress, tenant enforcement, and server-side reply redaction
 
+The campaign builder now starts from the product URL, not an uploaded mailing list. It analyzes the site, derives a search intent, searches the public web, crawls official company/team/contact pages, and presents sourced prospects for review. No third-party email finder is used. Emails visibly published by the company are preselected; pattern-resolved candidates are explicitly risky and opt-in.
+
 ## Real deliverability Day 1
 
 The production delivery path is complete in code: Smartlead campaign creation, conservative settings, managed account attachment, 400-lead batching, sequences, start/pause, reply-thread response, webhook registration, reply/bounce/unsubscribe normalization, duplicate suppression, daily/monthly quotas, and automatic provider pause above the bounce threshold. Mock sending is isolated to CI/local mode.
@@ -18,7 +20,7 @@ Once the Smartlead CAPTCHA/password gate is cleared in the preserved Chrome tab,
 ## Verified gates
 
 - `pnpm lint`: pass
-- `pnpm test`: pass — 7 tests across enrichment, sender contract, API redaction, and bounce pause
+- Test suite: pass — 9 tests across real page analysis/public discovery, sender contract, API redaction, configured-workspace launch, and bounce pause
 - `pnpm build`: pass — all packages, API, and production Next.js build
 - `pnpm smoke`: pass — research → seed → resolve → launch → Free redaction → mock billing upgrade → full reply
 - Finder hostname guard: pass
@@ -26,6 +28,7 @@ Once the Smartlead CAPTCHA/password gate is cleared in the preserved Chrome tab,
 - `https://replo.it`: HTTP 200
 - `https://api.replo.eu/health`: HTTP 200
 - `https://api.replo.eu/v1/openapi.json`: HTTP 200
+- Production browser GTM flow: pass — 6 prospects from 7 sources, each with public-source links and confidence state
 - Vercel custom-domain verification: pass for both domains
 - Authoritative DNS: Vercel records and DMARC confirmed directly on `ns1.register.it`
 - Deployed API error scan after final request: clean
@@ -33,6 +36,7 @@ Once the Smartlead CAPTCHA/password gate is cleared in the preserved Chrome tab,
 ## Security and product controls
 
 - API keys are generated with `rk_test_` form and stored only as SHA-256 hashes.
+- Production uses one sensitive workspace key shared by the web server and API; the API hashes it before lookup and never exposes it to the browser.
 - Free reply identity/body are blanked by the API DTO; Pro receives full stored data.
 - Dev reply simulation is gated by both mock provider mode and an explicit development flag; production flag is false.
 - Provider webhook uses a shared secret or HMAC, event idempotency, and bounce-rate auto-pause.

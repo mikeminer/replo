@@ -8,6 +8,13 @@ export type Reply = { id: string; orgId: string; campaignId: string; espReplyId:
 export type Job = { id: string; orgId: string; type: string; status: string; result?: unknown; error?: string };
 export class MemoryStore {
   organizations = new Map<string, Org>(); apiKeys = new Map<string, string>(); campaigns = new Map<string, Campaign>(); replies = new Map<string, Reply>(); jobs = new Map<string, Job>(); events = new Set<string>();
+  constructor() {
+    const raw = process.env.REPLO_WORKSPACE_API_KEY;
+    if (raw) {
+      const org: Org = { id: "workspace_default", name: process.env.REPLO_WORKSPACE_NAME ?? "Replo workspace", plan: process.env.REPLO_WORKSPACE_PLAN === "pro" ? "pro" : "free", monthlySendCount: 0, monthlyResolveCount: 0 };
+      this.organizations.set(org.id, org); this.apiKeys.set(this.hash(raw), org.id);
+    }
+  }
   hash(value: string) { return createHash("sha256").update(value).digest("hex"); }
   bootstrap(name = "Replo workspace", plan: Plan = "free") { const org: Org = { id: randomUUID(), name, plan, monthlySendCount: 0, monthlyResolveCount: 0 }; const raw = `rk_test_${randomBytes(24).toString("base64url")}`; this.organizations.set(org.id, org); this.apiKeys.set(this.hash(raw), org.id); return { org, apiKey: raw }; }
   orgForKey(raw: string) { const id = this.apiKeys.get(this.hash(raw)); return id ? this.organizations.get(id) : undefined; }

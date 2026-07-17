@@ -1,6 +1,6 @@
 # OPS STATE
 
-Updated: 2026-07-17 11:34 Europe/Rome
+Updated: 2026-07-17 15:02 Europe/Rome
 
 - ESP: `smartlead` | code: complete | account: signup page reached | api_key: unavailable; account creation awaits human CAPTCHA and a user-chosen password
 - Production send mode: `mock` temporarily, because enabling `smartlead` without an account key would fail closed at startup
@@ -16,6 +16,9 @@ Updated: 2026-07-17 11:34 Europe/Rome
 - Stripe: Google login reached hCaptcha | price: pending CAPTCHA/account access
 - Transactional: Resend adapter complete | key/domain: unavailable in environment/browser session
 - Deploy: web `https://replo.it` | API `https://api.replo.eu`
-- Vercel production environment: URLs set; dev routes disabled; internal bootstrap secret generated and stored as a sensitive variable
+- Autonomous GTM: live at `/app/campaigns/new`; site analysis → Bing public-web discovery → official company/team/contact crawl → sourced prospect review. No mailing-list upload is requested.
+- Discovery verification: Chrome production run returned 6 reviewable prospects from 7 public sources. Page-published emails are selected by default; generated owned-domain patterns are marked risky and left unselected.
+- Discovery transport: browser uses `@replo/sdk` over a same-origin Vercel edge rewrite to `api.replo.eu`; GET is used because discovery inputs are non-sensitive and the prior Vercel POST body stream stalled before routing.
+- Vercel production environment: URLs set; dev routes disabled; internal bootstrap secret and deterministic workspace API key stored as sensitive variables on both projects
 
-No plaintext secrets are recorded in this file. No `BLOCKERS.md` exists because no payment-method failure has occurred; the current unavoidable gates are human CAPTCHA/password selection.
+No plaintext secrets are recorded in this file. No `BLOCKERS.md` exists because no payment-method failure has occurred; the current unavoidable provider gates are human CAPTCHA/password selection.

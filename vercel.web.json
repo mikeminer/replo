@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @replo/web build",
+  "outputDirectory": "apps/web/.next",
+  "rewrites": [{ "source": "/api/v1/prospects/discover", "destination": "https://api.replo.eu/v1/prospects/discover" }]
+}
