@@ -7,9 +7,11 @@ Replo is a site-to-prospect research and email-composition product:
 - Web: `https://replo.it` — Next.js, consuming the API only through `@replo/sdk`
 - API: `https://api.replo.eu` — Hono research and owned-resolution surface
 
-The primary workflow starts from the user's product URL, not a mailing list. It analyzes the site, infers the buyer context when needed, runs progressive public-web searches, follows list/editorial results only to discover official company domains, and crawls official company/team/contact pages. It ranks decision makers by the requested role and keeps territory evidence strict. No third-party email finder is used.
+The primary workflow starts from the user's product URL, not a mailing list. It analyzes the site, infers the buyer context when needed and builds a territory/intent-aware source plan. Europages is used for EU discovery; WLW and XING company pages for DACH; Netcomm, ICE and Unioncamere for Italy; Viadeo company pages for France; and EU-Startups, Startup Europe, Codemotion or Developers Italia when the buyer context makes them relevant. These sources discover and qualify companies only: Replo follows them to official company domains, then crawls official company/team/contact pages. No third-party email finder is used.
 
-False positives are deliberately rejected: generic mailboxes, non-person labels, publishers/directories used as contact sources, placeholder theme teams and companies outside the requested territory. Published abbreviated addresses such as `p.testa@azienda.it` are matched back to the full person name on the same official page; generated patterns remain visibly marked “da verificare” with reduced confidence.
+Osservatori.net and curated maps of Italian tech communities are context-only inputs for market language and taxonomy. They are never crawled for names or addresses. The UI exposes the selected channels, their role and whether they produced useful intermediate evidence, so a zero-result search is explainable rather than a generic dead end.
+
+False positives are deliberately rejected: generic mailboxes, role labels mistaken for names, publishers/directories used as contact sources, placeholder theme teams and companies outside the requested territory. Italy, DACH and France searches require domain or explicit locality evidence on the official site. Published abbreviated addresses such as `p.testa@azienda.it` are matched back to the full person name on the same official page; generated patterns remain visibly marked “da verificare” with reduced confidence.
 
 For every prospect, the web app now generates a complete visible draft: destination address, recipient name and company, subject, personalized body, sender name/signature and source evidence. The user can copy the entire email or open it via `mailto:` in the company's existing email client.
 
@@ -33,7 +35,7 @@ Operational state is maintained in [OPS_STATE.md](./OPS_STATE.md).
 
 ## Production verification
 
-- API deployment `dpl_4J9j6uzGN8KHnnhCkArwb7iJWtpS`: `READY`, aliased to `api.replo.eu`.
-- Web deployment `dpl_5H2fqWUJkCdUW4zUQZs1dxNVutD1`: `READY`, aliased to `replo.it`.
-- Automated gates: 16 tests, full TypeScript lint, no-finder guard and all workspace builds passed.
-- Chrome gate: a real Italy-scoped search returned named prospects with official sources; the copied payload contained recipient, name, company, subject, personalized body, `Mario Rossi` and `Direttore commerciale · Azienda Demo`; inbox and deliverability legacy URLs redirected to the research flow.
+- API deployment `dpl_352o7XMJS2fWNhNVfzUnLkc2dCAU`: `READY`, aliased to `api.replo.eu`.
+- Web deployment `dpl_F7yZo1394t6gmYrxBUBdsuwU9jES`: `READY`, aliased to `replo.it`; the same-origin `/api/health` rewrite returned `ok`.
+- Automated gates: 20 tests, full TypeScript lint, no-finder guard, all workspace builds and smoke checks passed.
+- Chrome gate: the real production Italy search scanned 18 official sites and returned 4 named prospects. No `UX Researcher` false contact was present; all four source links were official company domains. “Copia email completa” produced a 588-character payload containing `Ciao Pasquale`, `Mario Rossi` and `Direttore commerciale · Azienda Demo`. No application-origin browser error was observed.

@@ -20,4 +20,6 @@ export class ReploClient {
 }
 
 export type DiscoveryProspect = { firstName: string; lastName: string; domain: string; knownEmail?: string; email: string; companyName: string; role?: string; confidence: number; verification: "valid" | "risky"; source: "public_page" | "owned_pattern"; sourceUrl: string; evidence: string };
-export type DiscoveryResult = { analysis: { url: string; name: string; title: string; summary: string; keywords: string[] }; query: string; prospects: DiscoveryProspect[]; sourcesScanned: number; partial?: boolean };
+export type DiscoveryChannel = { id: string; label: string; category: "marketplace" | "ecosystem" | "network" | "community" | "institutional"; purpose: "company_discovery" | "company_signal" | "territory_validation"; resultsFound: boolean };
+export type DiscoveryContextSource = { id: string; label: string; purpose: "market_context" | "community_mapping" };
+export type DiscoveryResult = { analysis: { url: string; name: string; title: string; summary: string; keywords: string[] }; query: string; prospects: DiscoveryProspect[]; sourcesScanned: number; partial?: boolean; strategy: { channels: DiscoveryChannel[]; contextSources: DiscoveryContextSource[]; contactPolicy: "official_company_sites_only" } };

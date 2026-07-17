@@ -1,7 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "installCommand": "pnpm install --frozen-lockfile",
   "builds": [{ "src": "apps/api/api/index.ts", "use": "@vercel/node" }],
   "routes": [{ "src": "/(.*)", "dest": "/apps/api/api/index.ts" }]
 }

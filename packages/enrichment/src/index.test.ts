@@ -64,7 +64,7 @@ describe("public-web discovery", () => {
 
   it("extracts named decision makers from an official team card and prioritizes the requested role", async () => {
     const smartCompany = `<!doctype html><title>Sydus</title><meta name="description" content="B2B software and SaaS cloud platform in Italy"><a href="/chi-siamo">Chi siamo</a>`;
-    const visibleTeam = `<section><div><p>Founder-ready toolkit</p></div><div><p>Operator advantage</p></div></section><section><p>Co-Founder &amp; CEO</p><p>Professional experience</p></section><section><p>Operations Strategy</p><p>Market Strategy</p></section><section><div><p>Head Developer</p></div><div><p>Giovanni Verdi</p></div></section><section><div><p>HR Specialist</p></div><div><p>Alba Bianchi</p></div></section><section><div><p>Sales Director</p></div><div><p>Alberto Gengaro</p></div></section>`;
+    const visibleTeam = `<section><div><p>Founder-ready toolkit</p></div><div><p>Operator advantage</p></div></section><section><p>Co-Founder &amp; CEO</p><p>Professional experience</p></section><section><p>Operations Strategy</p><p>Market Strategy</p></section><section><p>UX Researcher</p><p>Lead Designer &amp; Founder</p></section><section><div><p>Head Developer</p></div><div><p>Giovanni Verdi</p></div></section><section><div><p>HR Specialist</p></div><div><p>Alba Bianchi</p></div></section><section><div><p>Sales Director</p></div><div><p>Alberto Gengaro</p></div></section>`;
     const smartFetcher = (async (input: string | URL | Request) => {
       const url = String(input);
       if (url.includes("bing.com/search") || url.includes("duckduckgo.com/html")) return new Response(`<a class="result__a" href="https://sydus.test/chi-siamo">Sydus</a>`);
@@ -79,6 +79,7 @@ describe("public-web discovery", () => {
     expect(result.prospects).not.toEqual(expect.arrayContaining([expect.objectContaining({ firstName: "Operator" })]));
     expect(result.prospects).not.toEqual(expect.arrayContaining([expect.objectContaining({ firstName: "Professional" })]));
     expect(result.prospects).not.toEqual(expect.arrayContaining([expect.objectContaining({ firstName: "Market" })]));
+    expect(result.prospects).not.toEqual(expect.arrayContaining([expect.objectContaining({ firstName: "UX" })]));
     expect(result.prospects).not.toEqual(expect.arrayContaining([expect.objectContaining({ firstName: "Alba" })]));
   });
 
@@ -134,5 +135,95 @@ describe("public-web discovery", () => {
     const result = await discoverPublicProspects({ url: "https://replo.test", audience: "responsabili commerciali in aziende software B2B", territory: "Italia", limit: 3 }, outsideFetcher);
 
     expect(result.prospects).toEqual([]);
+  });
+
+  it("builds an Italy-specific multi-channel strategy without treating context sources as contact sources", async () => {
+    const calls: string[] = [];
+    const strategyFetcher = (async (input: string | URL | Request) => {
+      const url = String(input); calls.push(decodeURIComponent(url));
+      if (url === "https://replo.test") return new Response(product);
+      return new Response("");
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", audience: "software B2B ecommerce", territory: "Italia", limit: 3 }, strategyFetcher);
+    const channelIds = result.strategy.channels.map((channel) => channel.id);
+
+    expect(channelIds).toEqual(expect.arrayContaining(["europages", "netcomm", "eu-startups", "ice", "codemotion", "startup-europe", "unioncamere"]));
+    expect(channelIds).not.toEqual(expect.arrayContaining(["wlw", "xing", "viadeo"]));
+    expect(result.strategy.contextSources).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "osservatori", purpose: "market_context" }),
+      expect.objectContaining({ id: "italian-tech-communities", purpose: "community_mapping" }),
+    ]));
+    expect(result.strategy.contactPolicy).toBe("official_company_sites_only");
+    expect(calls).toEqual(expect.arrayContaining([
+      expect.stringContaining("site:europages.com"),
+      expect.stringContaining("site:consorzionetcomm.it/soci"),
+      expect.stringContaining("site:eu-startups.com/directory"),
+      expect.stringContaining("site:ice.it"),
+    ]));
+  });
+
+  it("uses a curated marketplace only as a bridge to the official company website", async () => {
+    const marketplaceSearch = `<div class="compTitle"><a href="https://www.europages.com/acme/profile">Acme on Europages</a></div>`;
+    const marketplaceProfile = `<a href="https://sydus.test/">Visit official website</a><a href="https://facebook.com/sydus">Social</a>`;
+    const smartCompany = `<!doctype html><title>Sydus</title><meta name="description" content="B2B software and SaaS cloud platform based in Italy"><a href="/team">Team</a>`;
+    const visibleTeam = `<section><p>Sales Director</p><p>Alberto Gengaro</p><p>alberto.gengaro@sydus.test</p></section>`;
+    const marketplaceFetcher = (async (input: string | URL | Request) => {
+      const url = String(input), decoded = decodeURIComponent(url);
+      if (url === "https://replo.test") return new Response(product);
+      if (url.includes("search.yahoo.com") && decoded.includes("site:europages.com")) return new Response(marketplaceSearch);
+      if (url.includes("bing.com/search") || url.includes("duckduckgo.com/html") || url.includes("search.yahoo.com")) return new Response("");
+      if (url.includes("europages.com")) return new Response(marketplaceProfile);
+      if (url.includes("sydus.test/team")) return new Response(visibleTeam);
+      if (url.includes("sydus.test")) return new Response(smartCompany);
+      return new Response("");
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", audience: "responsabili commerciali in aziende software B2B", territory: "Italia", limit: 3 }, marketplaceFetcher);
+
+    expect(result.strategy.channels.find((channel) => channel.id === "europages")).toMatchObject({ resultsFound: true });
+    expect(result.sourcesScanned).toBe(1);
+    expect(result.prospects[0]).toMatchObject({ firstName: "Alberto", email: "alberto.gengaro@sydus.test", sourceUrl: "https://sydus.test/team" });
+    expect(result.prospects[0]?.sourceUrl).not.toContain("europages.com");
+  });
+
+  it("switches to DACH sources and accepts German territory evidence", async () => {
+    const dachHome = `<!doctype html><title>Wolke GmbH</title><meta name="description" content="B2B software company based in Berlin, Germany"><a href="/team">Team</a>`;
+    const dachTeam = `<section><p>Founder</p><p>Greta Muller</p><p>greta.muller@wolke.de</p></section>`;
+    const dachFetcher = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === "https://replo.test") return new Response(product);
+      if (url.includes("bing.com/search")) return new Response(`<li class="b_algo"><a href="https://wolke.de/">Wolke</a></li>`);
+      if (url.includes("wolke.de/team")) return new Response(dachTeam);
+      if (url.includes("wolke.de")) return new Response(dachHome);
+      return new Response("");
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", audience: "software B2B", territory: "DACH", limit: 3 }, dachFetcher);
+    const channelIds = result.strategy.channels.map((channel) => channel.id);
+
+    expect(channelIds).toEqual(expect.arrayContaining(["europages", "wlw", "xing"]));
+    expect(channelIds).not.toEqual(expect.arrayContaining(["netcomm", "ice", "viadeo"]));
+    expect(result.prospects[0]).toMatchObject({ firstName: "Greta", domain: "wolke.de", verification: "valid" });
+  });
+
+  it("enforces France instead of accepting any European company", async () => {
+    const searchResults = `<li class="b_algo"><a href="https://maison.fr/">Maison</a></li><li class="b_algo"><a href="https://firma.de/">Firma</a></li>`;
+    const franceFetcher = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === "https://replo.test") return new Response(product);
+      if (url.includes("bing.com/search")) return new Response(searchResults);
+      if (url.includes("maison.fr/team")) return new Response(`<p>Founder</p><p>Camille Bernard</p><p>camille.bernard@maison.fr</p>`);
+      if (url.includes("maison.fr")) return new Response(`<!doctype html><title>Maison Cloud</title><meta name="description" content="Plateforme software B2B basée à Paris, France"><a href="/team">Team</a>`);
+      if (url.includes("firma.de/team")) return new Response(`<p>Founder</p><p>Greta Muller</p><p>greta.muller@firma.de</p>`);
+      if (url.includes("firma.de")) return new Response(`<!doctype html><title>Firma Cloud</title><meta name="description" content="B2B software company based in Berlin, Germany"><a href="/team">Team</a>`);
+      return new Response("");
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", audience: "software B2B", territory: "Francia", limit: 3 }, franceFetcher);
+
+    expect(result.strategy.channels.map((channel) => channel.id)).toContain("viadeo");
+    expect(result.prospects).toEqual(expect.arrayContaining([expect.objectContaining({ domain: "maison.fr", firstName: "Camille" })]));
+    expect(result.prospects).not.toEqual(expect.arrayContaining([expect.objectContaining({ domain: "firma.de" })]));
   });
 });

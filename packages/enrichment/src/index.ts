@@ -5,6 +5,10 @@ export type PersonSeed = { firstName: string; lastName: string; domain: string; 
 export type Candidate = { email: string; confidence: number; source: "seed" | "page" | "pattern"; verification: "valid" | "risky" | "invalid" };
 export type WebsiteAnalysis = { url: string; name: string; title: string; summary: string; keywords: string[] };
 export type PublicProspect = PersonSeed & { companyName: string; role?: string; email: string; confidence: number; verification: "valid" | "risky"; source: "public_page" | "owned_pattern"; sourceUrl: string; evidence: string };
+export type DiscoveryChannelCategory = "marketplace" | "ecosystem" | "network" | "community" | "institutional";
+export type DiscoveryChannelSummary = { id: string; label: string; category: DiscoveryChannelCategory; purpose: "company_discovery" | "company_signal" | "territory_validation"; resultsFound: boolean };
+export type DiscoveryContextSource = { id: string; label: string; purpose: "market_context" | "community_mapping" };
+type DiscoveryChannelDefinition = Omit<DiscoveryChannelSummary, "resultsFound"> & { hosts: string[]; priority: number; query: (intent: string, territory: string) => string };
 const clean = (value: string) => value.normalize("NFKD").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 
 export function generateCandidates(seed: PersonSeed): Candidate[] {
@@ -41,7 +45,7 @@ export async function resolveOwned(seed: PersonSeed): Promise<Candidate | null> 
 const blockedHosts = new Set(["duckduckgo.com", "google.com", "bing.com", "yahoo.com", "yimg.com", "linkedin.com", "facebook.com", "instagram.com", "x.com", "twitter.com", "youtube.com", "wikipedia.org", "indeed.com", "glassdoor.com", "crunchbase.com", "g2.com", "trustpilot.com", "yelp.com", "reddit.com", "topconsumerreviews.com"]);
 const genericMailboxes = new Set(["admin", "billing", "careers", "contact", "hello", "info", "jobs", "legal", "marketing", "office", "press", "privacy", "sales", "support", "team"]);
 const genericMailboxTokens = new Set(["account", "accounts", "anonymous", "anonimo", "care", "complaint", "complaints", "consumer", "consumerrelations", "customer", "customers", "customerservice", "editorial", "enquiry", "enquiries", "help", "imprese", "inquiry", "media", "redazione", "relations", "service", "services", "webmaster"]);
-const nonPersonTokens = new Set("about advantage agency ai animalia artificial azienda brands business certificazioni chief commission company contact contacts corsi course data dettagli director ecommerce experience featured group gruppo innovation intelligence investor longevity management manager managing market marketing member nostre officer operator platform posizionamento premio product prodotti professional project ready relazioni retail security service servizi solution soluzioni strategia strategie strategy suite team technology tocca toolkit valore".split(" "));
+const nonPersonTokens = new Set("about advantage agency ai animalia artificial azienda brands business certificazioni chief commission company contact contacts corsi course data designer dettagli director ecommerce experience featured group gruppo innovation intelligence investor longevity management manager managing market marketing member nostre officer operator platform posizionamento premio product prodotti professional project ready relazioni researcher retail security service servizi solution soluzioni specialist strategia strategie strategy suite team technology tocca toolkit ui ux valore".split(" "));
 const stopWords = new Set("about after also and are been being business can company could from have into more most not our product services software solution that the their them they this through use using was were what when where which will with your you per una che con del della delle dei gli nel nella non più sua suo".split(" "));
 const audienceNoise = new Set("azienda aziende business ceo chief commercial commerciale commerciali company companies cto direttore direttori director founder founders head imprese manager responsabile responsabili sales societa società team teams vice president vp".split(" "));
 
@@ -90,6 +94,56 @@ function normalizedText(value: string) {
   return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
+const discoveryChannelDefinitions: DiscoveryChannelDefinition[] = [
+  { id: "europages", label: "Europages", category: "marketplace", purpose: "company_discovery", hosts: ["europages.com"], priority: 1, query: (intent, territory) => `site:europages.com ${intent} ${territory}` },
+  { id: "wlw", label: "Wer liefert was (wlw)", category: "marketplace", purpose: "company_discovery", hosts: ["wlw.de", "wlw.at", "wlw.ch"], priority: 2, query: (intent) => `site:wlw.de ${intent} anbieter` },
+  { id: "netcomm", label: "Netcomm", category: "ecosystem", purpose: "company_discovery", hosts: ["consorzionetcomm.it"], priority: 2, query: (intent) => `site:consorzionetcomm.it/soci ${intent}` },
+  { id: "eu-startups", label: "EU-Startups", category: "ecosystem", purpose: "company_discovery", hosts: ["eu-startups.com"], priority: 3, query: (intent, territory) => `site:eu-startups.com/directory ${intent} ${territory}` },
+  { id: "ice", label: "ICE / Italian Trade Agency", category: "institutional", purpose: "company_discovery", hosts: ["ice.it"], priority: 4, query: (intent) => `site:ice.it "find your italian partner" ${intent}` },
+  { id: "xing", label: "XING aziende", category: "network", purpose: "company_signal", hosts: ["xing.com"], priority: 4, query: (intent, territory) => `site:xing.com/pages ${intent} ${territory}` },
+  { id: "viadeo", label: "Viadeo aziende", category: "network", purpose: "company_signal", hosts: ["viadeo.journaldunet.com"], priority: 4, query: (intent) => `site:viadeo.journaldunet.com ${intent} entreprise` },
+  { id: "developers-italia", label: "Developers Italia", category: "community", purpose: "company_signal", hosts: ["developers.italia.it"], priority: 5, query: (intent) => `site:developers.italia.it ${intent}` },
+  { id: "codemotion", label: "Codemotion", category: "community", purpose: "company_signal", hosts: ["community.codemotion.com", "codemotion.com"], priority: 5, query: (intent) => `site:community.codemotion.com ${intent}` },
+  { id: "startup-europe", label: "Startup Europe", category: "institutional", purpose: "company_signal", hosts: ["digital-strategy.ec.europa.eu"], priority: 6, query: (intent) => `site:digital-strategy.ec.europa.eu "startup europe" ${intent}` },
+  { id: "unioncamere", label: "Unioncamere / Registro Imprese", category: "institutional", purpose: "territory_validation", hosts: ["unioncamere.gov.it", "registroimprese.it"], priority: 7, query: (intent) => `site:registroimprese.it ${intent}` },
+];
+
+function discoveryChannelsFor(intent: string, territory: string) {
+  const market = normalizedText(territory), context = normalizedText(intent);
+  const italy = /\b(italia|italian|italy)\b/.test(market);
+  const dach = /\b(dach|deutschland|germania|germany|osterreich|austria|schweiz|svizzera|switzerland)\b/.test(market);
+  const france = /\b(france|francia|french)\b/.test(market);
+  const europe = !market || /\b(eu|europa|europe|european union|unione europea)\b/.test(market) || italy || dach || france;
+  const tech = /\b(ai|api|cloud|cyber|data|deep tech|developer|digit|e-?commerce|fintech|platform|saas|software|startup|tech)\b/.test(context);
+  const industrial = /\b(export|fabbric|industr|manufactur|packag|prodot|supplier|fornitor)\b/.test(context);
+  const publicDigital = /\b(agid|civic|open source|pa|pubblic|public sector|spid)\b/.test(context);
+  const selected = discoveryChannelDefinitions.filter((channel) => {
+    if (channel.id === "europages") return europe;
+    if (channel.id === "wlw") return dach || (europe && industrial);
+    if (channel.id === "netcomm" || channel.id === "ice" || channel.id === "unioncamere") return italy;
+    if (channel.id === "eu-startups" || channel.id === "startup-europe") return europe && tech;
+    if (channel.id === "xing") return dach;
+    if (channel.id === "viadeo") return france;
+    if (channel.id === "developers-italia") return italy && publicDigital;
+    if (channel.id === "codemotion") return europe && tech;
+    return false;
+  });
+  return selected.sort((left, right) => left.priority - right.priority).slice(0, 8);
+}
+
+function contextSourcesFor(intent: string, territory: string): DiscoveryContextSource[] {
+  const market = normalizedText(territory), context = normalizedText(intent), sources: DiscoveryContextSource[] = [];
+  const italy = /\b(italia|italian|italy)\b/.test(market);
+  if (italy) sources.push({ id: "osservatori", label: "Osservatori.net", purpose: "market_context" });
+  if (italy && /\b(developer|digit|open source|saas|software|startup|tech)\b/.test(context)) sources.push({ id: "italian-tech-communities", label: "Community tech italiane", purpose: "community_mapping" });
+  return sources;
+}
+
+function channelForUrl(value: string) {
+  const host = hostOf(value);
+  return discoveryChannelDefinitions.find((channel) => channel.hosts.some((candidate) => host === candidate || host.endsWith(`.${candidate}`)));
+}
+
 function audienceTerms(value: string) {
   const terms = normalizedText(value).match(/[a-z0-9][a-z0-9-]{1,}/g) ?? [];
   return [...new Set(terms.filter((term) => (term.length >= 3 || term === "b2b") && !audienceNoise.has(term) && !stopWords.has(term)).map((term) => term === "saas" ? "software" : term))].slice(0, 5);
@@ -118,10 +172,25 @@ function companyMatchesAudience(html: string, terms: string[]) {
 }
 
 function companyMatchesTerritory(url: string, html: string, territory: string) {
-  if (!/ital|italy/i.test(territory)) return true;
-  const host = hostOf(url); if (host.endsWith(".it")) return true;
+  const requested = normalizedText(territory).replace(/\s+/g, " ").trim();
+  if (!requested || /^(?:eu|europa|europe|european union|unione europea)$/.test(requested)) return true;
+  const host = hostOf(url);
   const pageText = normalizedText(textFromHtml(html).slice(0, 20_000));
-  return /\b(italia|italian|italy|bologna|firenze|florence|milan|milano|napoli|rome|roma|torino|turin|venezia|venice)\b/.test(pageText);
+  const profiles = [
+    { request: /\bdach\b/, domains: [".de", ".at", ".ch"], evidence: /\b(austria|deutschland|germany|osterreich|schweiz|switzerland|berlin|frankfurt|hamburg|munchen|munich|vienna|wien|zurich)\b/ },
+    { request: /\b(italia|italian|italy)\b/, domains: [".it"], evidence: /\b(italia|italian|italy|bologna|firenze|florence|milan|milano|napoli|rome|roma|torino|turin|venezia|venice)\b/ },
+    { request: /\b(deutschland|germania|germany)\b/, domains: [".de"], evidence: /\b(deutschland|germania|germany|berlin|frankfurt|hamburg|munchen|munich)\b/ },
+    { request: /\b(austria|osterreich)\b/, domains: [".at"], evidence: /\b(austria|osterreich|vienna|wien|graz|linz|salzburg)\b/ },
+    { request: /\b(schweiz|svizzera|switzerland)\b/, domains: [".ch"], evidence: /\b(schweiz|svizzera|switzerland|basel|bern|geneva|ginevra|lausanne|zurich)\b/ },
+    { request: /\b(france|francia|french)\b/, domains: [".fr"], evidence: /\b(france|francia|french|lille|lyon|marseille|nantes|paris|toulouse)\b/ },
+    { request: /\b(spagna|spain|spanish)\b/, domains: [".es"], evidence: /\b(barcelona|madrid|spagna|spain|spanish|valencia)\b/ },
+    { request: /\b(portogallo|portugal|portuguese)\b/, domains: [".pt"], evidence: /\b(lisbon|lisboa|porto|portogallo|portugal|portuguese)\b/ },
+    { request: /\b(benelux|belgio|belgium|netherlands|olanda|luxembourg|lussemburgo)\b/, domains: [".be", ".nl", ".lu"], evidence: /\b(amsterdam|belgio|belgium|brussels|bruxelles|luxembourg|lussemburgo|netherlands|olanda|rotterdam)\b/ },
+  ];
+  const profile = profiles.find((candidate) => candidate.request.test(requested));
+  if (profile) return profile.domains.some((suffix) => host.endsWith(suffix)) || profile.evidence.test(pageText);
+  const terms = requested.match(/[a-z0-9][a-z0-9-]{2,}/g) ?? [];
+  return terms.length > 0 && terms.every((term) => pageText.includes(term));
 }
 
 function looksLikePublisherOrDirectory(analysis: WebsiteAnalysis, html = "") {
@@ -184,6 +253,17 @@ function externalCompanyLinks(html: string, base: string) {
     links.push(target.origin);
   } catch { /* Ignore malformed and non-HTTP links. */ }
   return [...new Set(links)].slice(0, 16);
+}
+function prioritizedExternalCompanyLinks(html: string, base: string) {
+  const links = externalCompanyLinks(html, base), preferred: string[] = [];
+  for (const match of html.matchAll(/<a[^>]+href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)) try {
+    const label = normalizedText(textFromHtml(match[2])).trim();
+    if (!/\b(company website|homepage|official site|official website|site officiel|sito ufficiale|sito web|visit website|visita il sito|website|zur website)\b/.test(label)) continue;
+    const origin = new URL(decodeHtml(match[1]), base).origin;
+    const known = links.find((candidate) => candidate === origin);
+    if (known) preferred.push(known);
+  } catch { /* Ignore malformed source links. */ }
+  return [...new Set([...preferred, ...links])];
 }
 function plausibleCompanyPage(value: string) {
   try {
@@ -317,39 +397,55 @@ export async function discoverPublicProspects(input: { url: string; audience?: s
     const requestedAudience = input.audience?.trim() || "", inferred = inferredBuyer(analysis), requestedTerms = audienceTerms(requestedAudience);
     const researchIntent = requestedTerms.length ? requestedAudience : inferred;
     const relevanceTerms = audienceTerms(researchIntent), coreIntent = relevanceTerms.join(" ") || researchIntent, preferredRoles = desiredRoleTerms(requestedAudience || researchIntent);
-    const territory = input.territory?.trim() || "Europa", italianMarket = /ital|italy/i.test(territory), broadTerritory = italianMarket ? "Europa" : "";
+    const territory = input.territory?.trim() || "Europa", normalizedTerritory = normalizedText(territory), italianMarket = /\b(italia|italian|italy)\b/.test(normalizedTerritory);
     const query = `${requestedAudience || inferred} · ${territory}`;
-    const marketScope = italianMarket ? "site:.it" : "";
+    const marketScope = italianMarket ? "site:.it" : /\bdach\b/.test(normalizedTerritory) ? "(site:.de OR site:.at OR site:.ch)" : /\b(france|francia|french)\b/.test(normalizedTerritory) ? "site:.fr" : "";
     const roleQuery = preferredRoles.includes("sales") ? '("Sales Director" OR "direttore commerciale")' : preferredRoles.includes("marketing") ? '("Marketing Director" OR "direttore marketing")' : preferredRoles.includes("cto") ? '("CTO" OR "direttore tecnico")' : "founder CEO";
+    const channels = discoveryChannelsFor(researchIntent, territory), contextSources = contextSourcesFor(researchIntent, territory);
     const queries = [...new Set([
       `${marketScope} ${coreIntent} azienda`,
-      `${marketScope} ${coreIntent} founder team`,
       `${marketScope} ${coreIntent} ${roleQuery}`,
-      `${coreIntent} ${territory} aziende`,
-      ...(broadTerritory ? [`${coreIntent} ${broadTerritory} companies`] : [`${coreIntent} companies ${territory}`]),
-    ])].slice(0, 5);
-    const searchRequests = queries.flatMap((value) => [
-      `https://www.bing.com/search?q=${encodeURIComponent(value)}`,
-      `https://html.duckduckgo.com/html/?q=${encodeURIComponent(value)}`,
-      `https://search.yahoo.com/search?p=${encodeURIComponent(value)}`,
-    ]);
-    const foundUrls: string[] = [];
-    const searchRows = await Promise.allSettled(searchRequests.map((url) => fetchHtml(url, boundedFetcher)));
-    for (const row of searchRows) if (row.status === "fulfilled") foundUrls.push(...searchUrls(row.value.html));
-    const expansionUrls: string[] = [], seenExpansionHosts = new Set<string>();
-    for (const url of foundUrls) {
-      const candidateHost = registrableHost(hostOf(url));
-      if (!candidateHost || candidateHost === registrableHost(sourceHost) || plausibleCompanyPage(url) || seenExpansionHosts.has(candidateHost)) continue;
-      seenExpansionHosts.add(candidateHost); expansionUrls.push(url);
-      if (expansionUrls.length >= 6) break;
+      `${coreIntent} companies ${territory}`,
+    ])].slice(0, 3);
+    const searchRequests: Array<{ url: string; channelId?: string }> = [
+      ...channels.map((channel) => ({ url: `https://search.yahoo.com/search?p=${encodeURIComponent(channel.query(coreIntent, territory))}`, channelId: channel.id })),
+      ...queries.flatMap((value) => [
+        { url: `https://www.bing.com/search?q=${encodeURIComponent(value)}` },
+        { url: `https://html.duckduckgo.com/html/?q=${encodeURIComponent(value)}` },
+        { url: `https://search.yahoo.com/search?p=${encodeURIComponent(value)}` },
+      ]),
+    ];
+    const searchRows = await Promise.allSettled(searchRequests.map(async (request) => ({ ...(await fetchHtml(request.url, boundedFetcher)), channelId: request.channelId })));
+    const foundResults: Array<{ url: string; channelId?: string }> = [], channelResults = new Map<string, number>();
+    for (const row of searchRows) if (row.status === "fulfilled") for (const url of searchUrls(row.value.html)) {
+      const channelId = channelForUrl(url)?.id ?? row.value.channelId;
+      if (channelId) channelResults.set(channelId, (channelResults.get(channelId) ?? 0) + 1);
+      foundResults.push({ url, channelId });
     }
-    const expansionRows = await Promise.allSettled(expansionUrls.map((url) => fetchHtml(url, boundedFetcher)));
+    const orderedResults: Array<{ url: string; channelId?: string }> = [], seenResults = new Set<string>();
+    for (const result of [...foundResults.filter(({ url }) => Boolean(channelForUrl(url))), ...foundResults.filter(({ url }) => !channelForUrl(url))]) {
+      if (seenResults.has(result.url)) continue;
+      seenResults.add(result.url); orderedResults.push(result);
+    }
+    const expansionTargets: Array<{ url: string; channelId?: string }> = [], seenExpansionHosts = new Set<string>();
+    for (const result of orderedResults) {
+      const { url } = result, sourceChannel = channelForUrl(url), candidateHost = registrableHost(hostOf(url));
+      if (!candidateHost || candidateHost === registrableHost(sourceHost) || (!sourceChannel && plausibleCompanyPage(url)) || seenExpansionHosts.has(candidateHost)) continue;
+      seenExpansionHosts.add(candidateHost); expansionTargets.push({ url, channelId: sourceChannel?.id ?? result.channelId });
+      if (expansionTargets.length >= 8) break;
+    }
+    const expansionRows = await Promise.allSettled(expansionTargets.map(async (target) => ({ ...(await fetchHtml(target.url, boundedFetcher)), channelId: target.channelId })));
     const expandedUrls: string[] = [];
-    for (const row of expansionRows) if (row.status === "fulfilled") expandedUrls.push(...externalCompanyLinks(row.value.html, row.value.url));
+    for (const row of expansionRows) if (row.status === "fulfilled") {
+      const externalLinks = prioritizedExternalCompanyLinks(row.value.html, row.value.url);
+      if (row.value.channelId && externalLinks.length) channelResults.set(row.value.channelId, Math.max(channelResults.get(row.value.channelId) ?? 0, externalLinks.length));
+      expandedUrls.push(...externalLinks);
+    }
     const companyUrls: string[] = [], seenCompanies = new Set<string>();
-    for (const url of [...foundUrls.filter(plausibleCompanyPage), ...expandedUrls]) {
+    const directUrls = orderedResults.filter(({ url }) => !channelForUrl(url) && plausibleCompanyPage(url)).map(({ url }) => url);
+    for (const url of [...directUrls, ...expandedUrls]) {
       const companyHost = registrableHost(hostOf(url));
-      if (!companyHost || companyHost === registrableHost(sourceHost) || seenCompanies.has(companyHost)) continue;
+      if (!companyHost || channelForUrl(url) || companyHost === registrableHost(sourceHost) || seenCompanies.has(companyHost)) continue;
       seenCompanies.add(companyHost); companyUrls.push(url);
       if (companyUrls.length >= 18) break;
     }
@@ -364,6 +460,17 @@ export async function discoverPublicProspects(input: { url: string; audience?: s
       if (diversified.includes(prospect) || diversified.filter((candidate) => candidate.domain === prospect.domain).length >= companyQuota) continue;
       diversified.push(prospect); if (diversified.length >= limit) break;
     }
-    return { analysis, query, prospects: diversified, sourcesScanned: companyUrls.length, partial: searchRows.some((row) => row.status === "rejected") || expansionRows.some((row) => row.status === "rejected") || rows.some((row) => row.status === "rejected") };
+    return {
+      analysis,
+      query,
+      prospects: diversified,
+      sourcesScanned: companyUrls.length,
+      partial: searchRows.some((row) => row.status === "rejected") || expansionRows.some((row) => row.status === "rejected") || rows.some((row) => row.status === "rejected"),
+      strategy: {
+        channels: channels.map(({ id, label, category, purpose }) => ({ id, label, category, purpose, resultsFound: (channelResults.get(id) ?? 0) > 0 })),
+        contextSources,
+        contactPolicy: "official_company_sites_only" as const,
+      },
+    };
   } finally { clearTimeout(timer); }
 }

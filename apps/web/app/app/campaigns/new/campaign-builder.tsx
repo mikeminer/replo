@@ -9,6 +9,7 @@ type SenderProfile = { name: string; signature: string; audience: string };
 
 const initialState: DiscoveryState = {};
 const initialSender: SenderProfile = { name: "", signature: "", audience: "" };
+const channelCategoryLabels = { marketplace: "marketplace", ecosystem: "ecosistema", network: "network aziende", community: "community", institutional: "fonte istituzionale" } as const;
 
 export function CampaignBuilder() {
   const [state, setState] = useState<DiscoveryState>(initialState);
@@ -121,19 +122,41 @@ export function CampaignBuilder() {
               <div className="eyebrow">2 · Copia e invia dalla tua casella</div>
               <h2>{state.discovery.prospects.length} email pronte</h2>
             </div>
-            <span className="badge">{state.discovery.sourcesScanned} fonti analizzate</span>
+            <span className="badge">{state.discovery.sourcesScanned} siti aziendali analizzati</span>
           </div>
           <div className="analysis">
             <strong>{state.discovery.analysis.name}</strong>
             <span>{state.discovery.analysis.summary}</span>
             <small>Ricerca: {state.discovery.query}</small>
           </div>
+          <div className="source-strategy">
+            <div className="source-strategy-head">
+              <strong>Canali scelti automaticamente</strong>
+              <small>Servono a scoprire e qualificare aziende; nome ed email arrivano sempre dal sito ufficiale.</small>
+            </div>
+            <div className="source-chips">
+              {state.discovery.strategy.channels.map((channel) => (
+                <span
+                  className={`source-chip ${channel.resultsFound ? "hit" : ""}`}
+                  key={channel.id}
+                  title={channel.resultsFound ? "Ha prodotto risultati intermedi utili" : "Interrogato senza prove sufficienti in questa ricerca"}
+                >
+                  {channel.label} · {channelCategoryLabels[channel.category]}
+                </span>
+              ))}
+            </div>
+            {state.discovery.strategy.contextSources.length > 0 && (
+              <small>
+                Contesto e tassonomie, mai usati per estrarre contatti: {state.discovery.strategy.contextSources.map((source) => source.label).join(" · ")}.
+              </small>
+            )}
+          </div>
 
           {state.discovery.prospects.length === 0 ? (
             <p className="notice error">
               {state.discovery.partial
-                ? "Una parte delle fonti pubbliche non ha risposto. Replo ha già ampliato automaticamente la ricerca senza chiederti una lista: riprova tra poco."
-                : "Replo ha già ampliato automaticamente la ricerca, ma non ha trovato prove pubbliche sufficienti. Non ha inventato nomi o indirizzi."}
+                ? `Una parte delle fonti pubbliche non ha risposto. Replo ha già interrogato ${state.discovery.strategy.channels.map((channel) => channel.label).join(", ") || "i motori pubblici generalisti"} e ampliato la ricerca senza chiederti una lista: riprova tra poco.`
+                : `Replo ha già cercato su ${state.discovery.strategy.channels.map((channel) => channel.label).join(", ") || "i motori pubblici generalisti"} e verificato i siti aziendali raggiungibili, ma non ha trovato prove pubbliche sufficienti. Non ha inventato nomi o indirizzi.`}
             </p>
           ) : (
             <div className="email-list">

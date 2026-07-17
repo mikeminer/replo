@@ -44,6 +44,12 @@ label { font-weight: 700; font-size: 14px; }
 .discovery-card { margin-top: 20px; }
 .analysis { display: flex; flex-direction: column; gap: 8px; background: #f4f6ed; border-radius: 12px; padding: 16px; margin: 12px 0 18px; }
 .analysis small, .email-draft small { color: var(--muted); }
+.source-strategy { display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: -4px 0 18px; background: #fff; }
+.source-strategy-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; }
+.source-strategy-head small, .source-strategy > small { color: var(--muted); }
+.source-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.source-chip { border: 1px solid var(--line); border-radius: 999px; padding: 5px 9px; color: var(--muted); background: #f8f8f3; font-size: 12px; font-weight: 750; }
+.source-chip.hit { color: #183727; border-color: #9bc6a7; background: #eaf6e9; }
 .email-list { display: flex; flex-direction: column; gap: 16px; margin-top: 18px; }
 .email-draft { border: 1px solid var(--line); border-radius: 14px; padding: 18px; background: #fcfcf8; }
 .email-draft-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
