@@ -1,15 +1,15 @@
 # OPS STATE
 
-Updated: 2026-07-17 Europe/Rome
+Updated: 2026-07-18 Europe/Rome
 
 - Product mode: research + copy-ready email; in-platform sending has been removed from the user-facing workflow
 - Web: `https://replo.it` — Next.js, API access only through `@replo/sdk`
 - API: `https://api.replo.eu` — Hono; `/health` and OpenAPI available
 - Autonomous GTM: `/app/campaigns/new`; product URL → site analysis → public-web discovery → official company/team/contact sources → one complete personalized email per prospect
-- Smart discovery: buyer inferred from the product when omitted; territory and intent select a visible channel plan. Europages covers EU discovery; WLW and XING company pages reinforce DACH; Netcomm, ICE and Unioncamere reinforce Italy; Viadeo company pages reinforce France; EU-Startups, Startup Europe, Codemotion and Developers Italia support startup/tech discovery when relevant
+- Smart discovery: customer-side buyer inferred from the product when omitted; the engine separates the seller's offer from buyer-company traits, decision-maker roles and demand triggers. Territory and buyer intent select a visible channel plan. Europages covers EU discovery; WLW and XING company pages reinforce DACH; Netcomm, ICE and Unioncamere reinforce Italy; Viadeo company pages reinforce France; EU-Startups, Startup Europe, Codemotion and Developers Italia support startup/tech discovery when relevant
 - Source hierarchy: marketplaces, networks, communities and institutional registers are discovery bridges only. Names and addresses are accepted only from the prospect's official company/team/contact pages. Osservatori.net and curated Italian tech-community maps are context/taxonomy inputs and never contact sources
 - Search depth: adaptive 36–53 second global budget, per-source timeouts, company verification in batches of 8 and up to 42 official domains for larger requests; the browser client allows 65 seconds for the complete response
-- Quality controls: departmental mailboxes, directory/publisher pages, placeholder/demo teams, role labels mistaken for people and off-territory companies are rejected; Italy, DACH and France searches require domain or explicit locality evidence on the official site
+- Quality controls: competing vendors, departmental mailboxes, directory/publisher pages, placeholder/demo teams, role labels mistaken for people and off-territory companies are rejected; Italy, DACH and France searches require domain or explicit locality evidence on the official site. An explicit buyer that names the supplier category intentionally overrides only the competitor filter
 - User input: product URL, optional buyer/territory, sender name, optional sender role/company; no mailing-list upload
 - Draft output: recipient address/name/company, subject, personalized body, sender name/signature, source link, complete-copy action and `mailto:` handoff
 - Brand assets: `image (4).jpg` is preserved as the light navigation mark; `image (6).jpg` is preserved as the dark app wordmark. Next.js generates a 64×64 site icon from the light mark and a clean 180×180 Apple/app icon from the dark mark
@@ -23,6 +23,6 @@ Updated: 2026-07-17 Europe/Rome
 - Mail DNS: existing Register.it MX/SPF preserved; no product operation requires further mail DNS changes
 - Secrets: no plaintext credentials are recorded in this file
 - Production deployments: API `dpl_3hFbxdmewanf9XnFowkotKNeZ2Nj`; web `dpl_DPvYi1HyYcr8BzC8XM96E6MatRZ7`; both `READY` with their custom-domain aliases. Root `vercel.json` now makes the monorepo web build/output target explicit
-- Verification: 22 automated tests passed; monorepo lint, web build and smoke passed. Chrome ran the production Italy flow at limit 20 against `replo.it`: 40 official sites scanned, 8 named prospects returned, zero `UX Researcher` false positives, every final source on an official company domain, and the clipboard payload contained recipient name, sender name and signature. The search completed within the UI's stated one-minute window. Chrome also verified the light navigation logo and dark app wordmark in production; `/icon` and `/apple-icon` return the visually approved PNGs with byte-identical local/production hashes. No application-origin browser errors were observed
+- Verification: 24 automated tests passed, including buyer-side GTM inference, competing-vendor rejection and explicit buyer override; monorepo lint, build and smoke passed. The previous Chrome production Italy flow at limit 20 scanned 40 official sites and returned 8 named prospects, with zero `UX Researcher` false positives and every final source on an official company domain. The clipboard payload contained recipient name, sender name and signature. Chrome also verified the light navigation logo and dark app wordmark in production; `/icon` and `/apple-icon` return the visually approved PNGs with byte-identical local/production hashes. No application-origin browser errors were observed
 
 No `BLOCKERS.md` exists because the current product can be delivered without a payment method or third-party ESP account.

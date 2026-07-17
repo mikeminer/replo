@@ -10,7 +10,13 @@ Replo è un assistente di ricerca e composizione, non un ESP. L'utente inserisce
 - link alla fonte pubblica;
 - copia completa in un clic o apertura tramite `mailto:` nel client dell'utente.
 
-La ricerca è progressiva: se il buyer è omesso viene inferito dal sito; fonti editoriali ed elenchi servono solo a raggiungere i domini ufficiali; persone e ruoli vengono letti dalle pagine aziendali. Replo elimina caselle generiche, contenuti demo, etichette scambiate per nomi, fonti directory e aziende senza prova del territorio richiesto. Gli indirizzi pubblicati sono distinti da quelli costruiti con un pattern, sempre marcati “da verificare”.
+La ricerca è progressiva: se il buyer è omesso viene inferito dal sito; fonti editoriali ed elenchi servono solo a raggiungere i domini ufficiali; persone e ruoli vengono letti dalle pagine aziendali. Replo separa sempre ciò che il sito vende da chi potrebbe comprarlo: per un prodotto di outbound, per esempio, cerca aziende B2B in crescita o in espansione e i loro responsabili commerciali, non altre piattaforme di lead generation. Replo elimina caselle generiche, contenuti demo, etichette scambiate per nomi, fonti directory, aziende concorrenti e aziende senza prova del territorio richiesto. Gli indirizzi pubblicati sono distinti da quelli costruiti con un pattern, sempre marcati “da verificare”.
+
+## Buyer, non competitor
+
+L'inferenza produce tre elementi distinti: profilo dell'azienda cliente, ruoli dei decision-maker e segnali di bisogno (crescita, nuovi mercati, assunzioni, digitalizzazione o altri trigger coerenti con il prodotto). Le query usano questi elementi lato buyer invece delle keyword che descrivono la categoria del venditore. Prima di estrarre persone ed email dal sito ufficiale, il motore applica inoltre un fingerprint di offerta: un'azienda che si presenta come fornitore della stessa soluzione viene esclusa. Se l'utente dichiara esplicitamente che quella categoria di fornitori è il proprio cliente ideale, l'indicazione ha la precedenza e il filtro viene disattivato per quel caso.
+
+La risposta API e la web app rendono visibili il buyer cercato, i ruoli decisionali e la policy applicata (`exclude_competing_vendors`, `buyer_override` o `not_applicable`), così l'interpretazione del sito è verificabile prima di usare le email.
 
 ## Motore multi-canale
 

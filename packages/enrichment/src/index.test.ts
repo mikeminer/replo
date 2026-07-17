@@ -31,6 +31,54 @@ describe("public-web discovery", () => {
     expect(result.prospects).toEqual(expect.arrayContaining([expect.objectContaining({ email: "ada.lovelace@acme.test", companyName: "Acme Cloud", source: "public_page", sourceUrl: "https://acme.test/team" })]));
   });
 
+  it("infers the buyer side of go-to-market and excludes competing vendors", async () => {
+    const calls: string[] = [];
+    const searchResults = `<li class="b_algo"><a href="https://competitor.it/">Competitor</a></li><li class="b_algo"><a href="https://buyer.it/">Buyer</a></li>`;
+    const competitorHome = `<!doctype html><title>Outbound Pro</title><meta name="description" content="Piattaforma outbound di lead generation e sales automation per aziende B2B in Italia"><a href="/team">Team</a>`;
+    const competitorTeam = `<section><p>Founder</p><p>Carlo Rossi</p><p>carlo.rossi@competitor.it</p></section>`;
+    const buyerHome = `<!doctype html><title>Fabbrica Nord</title><meta name="description" content="Azienda B2B manifatturiera italiana in crescita, con espansione commerciale ed export in nuovi mercati"><a href="/team">Team</a>`;
+    const buyerTeam = `<section><p>Sales Director</p><p>Giulia Bianchi</p><p>giulia.bianchi@buyer.it</p></section>`;
+    const buyerFetcher = (async (input: string | URL | Request) => {
+      const url = String(input); calls.push(decodeURIComponent(url));
+      if (url === "https://replo.test") return new Response(product);
+      if (url.includes("bing.com/search") || url.includes("duckduckgo.com/html") || url.includes("search.yahoo.com")) return new Response(searchResults);
+      if (url.includes("competitor.it/team")) return new Response(competitorTeam);
+      if (url.includes("competitor.it")) return new Response(competitorHome);
+      if (url.includes("buyer.it/team")) return new Response(buyerTeam);
+      if (url.includes("buyer.it")) return new Response(buyerHome);
+      return new Response("");
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", territory: "Italia", limit: 3 }, buyerFetcher);
+
+    expect(result.query).toBe("aziende B2B in crescita che sviluppano vendite o nuovi mercati · Italia");
+    expect(result.strategy.buyerProfile).toMatchObject({ source: "inferred", target: expect.stringContaining("aziende B2B in crescita"), decisionMakers: expect.stringContaining("commerciali") });
+    expect(result.strategy.competitorPolicy).toBe("exclude_competing_vendors");
+    expect(result.prospects).toEqual([expect.objectContaining({ firstName: "Giulia", domain: "buyer.it" })]);
+    expect(result.prospects).not.toEqual(expect.arrayContaining([expect.objectContaining({ domain: "competitor.it" })]));
+    expect(calls.some((url) => url.includes("nuovi mercati") || url.includes("espansione commerciale"))).toBe(true);
+    expect(calls.some((url) => url.includes("software B2B SaaS"))).toBe(false);
+  });
+
+  it("lets an explicit buyer definition override the competitor category filter", async () => {
+    const agencyHome = `<!doctype html><title>Lead Partners</title><meta name="description" content="Agenzia di lead generation e appointment setting per aziende in Italia"><a href="/team">Team</a>`;
+    const agencyTeam = `<section><p>Founder</p><p>Elena Verdi</p><p>elena.verdi@agency.it</p></section>`;
+    const agencyFetcher = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === "https://replo.test") return new Response(product);
+      if (url.includes("bing.com/search") || url.includes("duckduckgo.com/html") || url.includes("search.yahoo.com")) return new Response(`<li class="b_algo"><a href="https://agency.it/">Lead Partners</a></li>`);
+      if (url.includes("agency.it/team")) return new Response(agencyTeam);
+      if (url.includes("agency.it")) return new Response(agencyHome);
+      return new Response("");
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", audience: "agenzie di lead generation", territory: "Italia", limit: 3 }, agencyFetcher);
+
+    expect(result.strategy.buyerProfile.source).toBe("provided");
+    expect(result.strategy.competitorPolicy).toBe("buyer_override");
+    expect(result.prospects).toEqual(expect.arrayContaining([expect.objectContaining({ firstName: "Elena", domain: "agency.it" })]));
+  });
+
   it("expands across public search surfaces when the first provider has no useful result", async () => {
     const calls: string[] = [];
     const fallbackFetcher = (async (input: string | URL | Request) => {

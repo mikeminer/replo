@@ -7,7 +7,9 @@ Replo is a site-to-prospect research and email-composition product:
 - Web: `https://replo.it` — Next.js, consuming the API only through `@replo/sdk`
 - API: `https://api.replo.eu` — Hono research and owned-resolution surface
 
-The primary workflow starts from the user's product URL, not a mailing list. It analyzes the site, infers the buyer context when needed and builds a territory/intent-aware source plan. Europages is used for EU discovery; WLW and XING company pages for DACH; Netcomm, ICE and Unioncamere for Italy; Viadeo company pages for France; and EU-Startups, Startup Europe, Codemotion or Developers Italia when the buyer context makes them relevant. These sources discover and qualify companies only: Replo follows them to official company domains, then crawls official company/team/contact pages. No third-party email finder is used.
+The primary workflow starts from the user's product URL, not a mailing list. It analyzes the site, infers the customer side of the go-to-market motion when needed and builds a territory/intent-aware source plan. Product/category terms are separated from buyer-company traits, decision-maker roles and demand triggers. For an outbound product, Replo therefore searches for growing or expanding B2B companies and commercial leaders instead of other lead-generation vendors. Europages is used for EU discovery; WLW and XING company pages for DACH; Netcomm, ICE and Unioncamere for Italy; Viadeo company pages for France; and EU-Startups, Startup Europe, Codemotion or Developers Italia when the buyer context makes them relevant. These sources discover and qualify companies only: Replo follows them to official company domains, then crawls official company/team/contact pages. No third-party email finder is used.
+
+Candidate official sites are checked against an offer fingerprint before any person or email is accepted. A company presenting the same solution is rejected as a competing vendor; a buyer definition explicitly naming that supplier category can override the exclusion. The API and Italian UI expose the inferred target, decision-makers and applied competitor policy so the interpretation is auditable.
 
 The search depth is adaptive: depending on the requested result count, the server receives a 36–53 second global research budget, checks individual sources with bounded timeouts, and verifies companies in batches of eight. Larger searches can inspect up to 42 official domains. The web SDK allows 65 seconds for the complete response, while targeted team/leadership queries and page prioritization surface named decision-makers before generic homepages.
 
@@ -28,6 +30,8 @@ Pricing no longer sells reply unlocks or sending volume. Free exposes the curren
 ## Acceptance gates
 
 - A mailing list is never requested.
+- The inferred target describes likely customers and their decision-makers, not companies selling the same product category.
+- Competing vendors are excluded before contact extraction unless the user explicitly names them as the buyer.
 - Recipient and sender names are present in every generated message.
 - “Copia email completa” includes destination, recipient name/company, subject and body in one clipboard payload.
 - “Apri nella mia email” hands the prefilled draft to the user's email client without sending from Replo.
@@ -41,5 +45,5 @@ Operational state is maintained in [OPS_STATE.md](./OPS_STATE.md).
 
 - API deployment `dpl_3hFbxdmewanf9XnFowkotKNeZ2Nj`: `READY`, aliased to `api.replo.eu`.
 - Web deployment `dpl_DPvYi1HyYcr8BzC8XM96E6MatRZ7`: `READY`, aliased to `replo.it`; the same-origin `/api/health` rewrite returned `ok`.
-- Automated gates: 22 tests, full TypeScript lint, no-finder guard, all workspace builds and smoke checks passed.
+- Automated gates: 24 tests, full TypeScript lint, no-finder guard, all workspace builds and smoke checks passed. Regression coverage proves that an outbound/lead-generation competitor is rejected while a buyer-side commercial leader remains, and that an explicitly requested supplier category can override the filter.
 - Chrome gate: the real production Italy search at limit 20 scanned 40 official sites and returned 8 named prospects, versus 18 sites and 4 prospects before the depth increase. No `UX Researcher` false contact was present and every final source link was an official company domain. “Copia email completa” produced a 516-character payload containing `Ciao Uljan`, `Mario Rossi` and `Direttore commerciale · Azienda Demo`. The flow completed within the stated one-minute window. A second production pass verified the light navigation mark, dark app wordmark, generated icon metadata and absence of horizontal overflow; both production icon files matched their approved local hashes.

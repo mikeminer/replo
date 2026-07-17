@@ -74,7 +74,7 @@ export function CampaignBuilder() {
         <div className="eyebrow">1 · Analizza e trova</div>
         <h2>Parti dal tuo sito, non da una lista di indirizzi.</h2>
         <p className="muted">
-          Replo legge il posizionamento, cerca aziende compatibili sul web pubblico e prepara un&apos;email completa per ogni contatto. L&apos;invio resta nella tua casella aziendale.
+          Replo capisce chi dovrebbe comprare il prodotto, cerca quelle aziende e i relativi decision-maker sul web pubblico, ed esclude chi vende una soluzione concorrente. Prepara poi un&apos;email completa; l&apos;invio resta nella tua casella aziendale.
         </p>
         <label>
           URL del prodotto
@@ -82,7 +82,7 @@ export function CampaignBuilder() {
         </label>
         <div className="form-grid">
           <label>
-            Cliente ideale (opzionale)
+            Cliente ideale (opzionale: Replo lo deduce dal sito)
             <input name="audience" placeholder="es. responsabili commerciali in aziende di software B2B" />
           </label>
           <label>
@@ -128,7 +128,9 @@ export function CampaignBuilder() {
           <div className="analysis">
             <strong>{state.discovery.analysis.name}</strong>
             <span>{state.discovery.analysis.summary}</span>
-            <small>Ricerca: {state.discovery.query}</small>
+            <small>Buyer cercato: {state.discovery.strategy.buyerProfile.target}</small>
+            <small>Decision-maker: {state.discovery.strategy.buyerProfile.decisionMakers}</small>
+            <small>{state.discovery.strategy.competitorPolicy === "buyer_override" ? "Il target indicato include quel tipo di fornitore: la tua scelta ha la precedenza." : state.discovery.strategy.competitorPolicy === "exclude_competing_vendors" ? "Aziende concorrenti escluse automaticamente." : "Ricerca orientata ai potenziali clienti, non alle aziende simili al prodotto."}</small>
           </div>
           <div className="source-strategy">
             <div className="source-strategy-head">

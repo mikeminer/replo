@@ -9,6 +9,14 @@ export type DiscoveryChannelCategory = "marketplace" | "ecosystem" | "network" |
 export type DiscoveryChannelSummary = { id: string; label: string; category: DiscoveryChannelCategory; purpose: "company_discovery" | "company_signal" | "territory_validation"; resultsFound: boolean };
 export type DiscoveryContextSource = { id: string; label: string; purpose: "market_context" | "community_mapping" };
 type DiscoveryChannelDefinition = Omit<DiscoveryChannelSummary, "resultsFound"> & { hosts: string[]; priority: number; query: (intent: string, territory: string) => string };
+type BuyerIntent = {
+  target: string;
+  searchIntent: string;
+  fitTerms: string[];
+  decisionMakers: string;
+  competitorSignals: string[];
+  searchAngles: string[];
+};
 const clean = (value: string) => value.normalize("NFKD").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 
 export function generateCandidates(seed: PersonSeed): Candidate[] {
@@ -149,26 +157,91 @@ function audienceTerms(value: string) {
   return [...new Set(terms.filter((term) => (term.length >= 3 || term === "b2b") && !audienceNoise.has(term) && !stopWords.has(term)).map((term) => term === "saas" ? "software" : term))].slice(0, 5);
 }
 
-function inferredBuyer(analysis: WebsiteAnalysis) {
+function inferredBuyer(analysis: WebsiteAnalysis): BuyerIntent {
   const context = normalizedText(`${analysis.title} ${analysis.summary} ${analysis.keywords.join(" ")}`);
-  if (/outbound|prospect|lead|sales|vendit|email|crm/.test(context)) return "software B2B SaaS";
-  if (/e-?commerce|negozi|retail|shop/.test(context)) return "ecommerce retail";
-  if (/recruit|assunz|talent|risorse umane|human resources/.test(context)) return "aziende risorse umane";
-  if (/ristor|food|hospitality|hotel/.test(context)) return "ristorazione ospitalità";
-  return analysis.keywords.slice(0, 3).join(" ") || analysis.summary.slice(0, 80);
+  if (/outbound|prospect|lead|sales|vendit|email|crm/.test(context)) return {
+    target: "aziende B2B in crescita che sviluppano vendite o nuovi mercati",
+    searchIntent: "aziende B2B crescita espansione commerciale nuovi mercati",
+    fitTerms: ["b2b", "crescita", "espansione", "commerciale", "export"],
+    decisionMakers: "responsabili commerciali, business development e founder",
+    competitorSignals: ["lead generation", "generazione lead", "outbound platform", "piattaforma outbound", "sales automation", "automazione vendite", "sales intelligence", "prospecting platform", "piattaforma di prospecting", "cold email", "email outreach", "appointment setting", "presa appuntamenti", "database contatti", "trova contatti", "find prospects", "find leads"],
+    searchAngles: ["espansione commerciale nuovi mercati", "team sales business development", "crescita B2B export"],
+  };
+  if (/e-?commerce|negozi|retail|shop/.test(context)) return {
+    target: "brand ecommerce e retailer con un canale digitale in crescita",
+    searchIntent: "brand ecommerce retailer crescita digitale omnicanale",
+    fitTerms: ["ecommerce", "retail", "brand", "negozi", "omnicanale"],
+    decisionMakers: "responsabili ecommerce, digital e marketing",
+    competitorSignals: ["ecommerce platform", "piattaforma ecommerce", "ecommerce agency", "agenzia ecommerce", "software ecommerce", "shopify partner"],
+    searchAngles: ["brand ecommerce crescita", "retailer omnicanale", "negozi online espansione"],
+  };
+  if (/recruit|assunz|talent|risorse umane|human resources/.test(context)) return {
+    target: "aziende che stanno assumendo e hanno un team HR in crescita",
+    searchIntent: "aziende assunzioni crescita team HR talent",
+    fitTerms: ["assunzioni", "hiring", "careers", "talent", "crescita"],
+    decisionMakers: "responsabili HR, People e Talent Acquisition",
+    competitorSignals: ["recruiting platform", "piattaforma recruiting", "software recruiting", "applicant tracking", "agenzia recruiting", "head hunting", "selezione personale"],
+    searchAngles: ["aziende stanno assumendo", "team HR crescita", "talent acquisition hiring"],
+  };
+  if (/cyber|sicurezz|security|zero trust|compliance|gdpr/.test(context)) return {
+    target: "aziende digitali con infrastrutture, dati e requisiti di sicurezza",
+    searchIntent: "aziende digitali cloud dati infrastruttura sicurezza",
+    fitTerms: ["cloud", "digitale", "dati", "infrastruttura", "enterprise"],
+    decisionMakers: "CISO, CTO e responsabili IT",
+    competitorSignals: ["cybersecurity platform", "piattaforma cybersecurity", "servizi cybersecurity", "security software", "managed security", "soc as a service"],
+    searchAngles: ["infrastruttura cloud aziende", "compliance dati enterprise", "team IT trasformazione digitale"],
+  };
+  if (/contabil|accounting|fattur|finance|finanz|pagament|payment/.test(context)) return {
+    target: "PMI e aziende con processi finanziari e amministrativi da digitalizzare",
+    searchIntent: "PMI crescita processi amministrativi finanza digitale",
+    fitTerms: ["pmi", "crescita", "amministrazione", "finanza", "digitale"],
+    decisionMakers: "CFO, responsabili amministrativi e founder",
+    competitorSignals: ["accounting software", "software contabile", "piattaforma pagamenti", "payment platform", "servizi contabili digitali"],
+    searchAngles: ["PMI crescita amministrazione", "digitalizzazione processi finanziari", "team finance aziende"],
+  };
+  if (/ristor|food|hospitality|hotel/.test(context)) return {
+    target: "ristoranti, hotel e operatori dell'ospitalità",
+    searchIntent: "ristoranti hotel operatori ospitalita",
+    fitTerms: ["ristorante", "hotel", "ospitalita", "food", "turismo"],
+    decisionMakers: "titolari, direttori e responsabili operativi",
+    competitorSignals: [],
+    searchAngles: ["ristoranti aziende", "hotel gestione", "operatori ospitalita"],
+  };
+  return {
+    target: "PMI e aziende B2B in crescita con processi da migliorare",
+    searchIntent: "PMI aziende B2B crescita innovazione processi",
+    fitTerms: ["b2b", "pmi", "crescita", "innovazione", "digitale"],
+    decisionMakers: "founder e responsabili della funzione coinvolta",
+    competitorSignals: [],
+    searchAngles: ["PMI crescita innovazione", "aziende B2B nuovi progetti", "digitalizzazione processi aziende"],
+  };
 }
 
-function companyMatchesAudience(html: string, terms: string[]) {
+function companyMatchesAudience(html: string, terms: string[], minimumMatches = 2) {
   if (!terms.length) return true;
   const haystack = normalizedText(textFromHtml(html).slice(0, 40_000));
   const synonyms: Record<string, string[]> = {
     b2b: ["b2b", "business-to-business", "business to business", "enterprise software", "for businesses", "per aziende"],
+    crescita: ["crescita", "growing", "growth", "scaleup", "scale-up"],
+    espansione: ["espansione", "expanding", "expansion", "nuovi mercati", "new markets"],
+    commerciale: ["commerciale", "sales", "business development", "vendite"],
+    export: ["export", "international markets", "mercati internazionali"],
     ecommerce: ["ecommerce", "e-commerce", "online store", "negozio online"],
     retail: ["retail", "commercio", "negozi"],
     software: ["software", "saas", "cloud platform", "piattaforma cloud", "piattaforma software"],
   };
   const matches = terms.filter((term) => (synonyms[term] ?? [term]).some((candidate) => haystack.includes(candidate))).length;
-  return matches >= Math.min(2, terms.length);
+  return matches >= Math.min(minimumMatches, terms.length);
+}
+
+function companyLooksLikeCompetitor(html: string, signals: string[]) {
+  if (!signals.length) return false;
+  const haystack = normalizedText(textFromHtml(html).slice(0, 30_000));
+  const matches = signals.filter((signal) => haystack.includes(normalizedText(signal)));
+  if (matches.length >= 2) return true;
+  const vendorIdentity = /\b(agency|agenzia|piattaforma|platform|service|servizi|software|solution|soluzione|tool|strumento)\b/.test(haystack);
+  const supplierClaim = /\b(aiutiamo|forniamo|la nostra piattaforma|offriamo|our platform|our service|servizi? di|software per|we help|we offer|we provide)\b/.test(haystack);
+  return matches.length === 1 && vendorIdentity && supplierClaim;
 }
 
 function companyMatchesTerritory(url: string, html: string, territory: string) {
@@ -339,8 +412,23 @@ function desiredRoleTerms(audience: string) {
   const value = normalizedText(audience);
   if (/sales|commercial|vendit|revenue/.test(value)) return ["sales", "commercial", "vendit", "business develop", "revenue", "managing director", "founder", "ceo"];
   if (/marketing|growth|comunicaz/.test(value)) return ["marketing", "growth", "comunicaz", "managing director", "founder", "ceo"];
+  if (/ecommerce|e-commerce|retail|digital/.test(value)) return ["ecommerce", "e-commerce", "digital", "retail", "marketing", "growth", "founder", "ceo"];
+  if (/hr|human resources|people|talent|risorse umane/.test(value)) return ["human resources", "hr", "people", "talent", "recruit", "founder", "ceo"];
+  if (/ciso|cyber|security|sicurezz|\bit\b/.test(value)) return ["ciso", "security", "sicurezz", "cto", "information technology", "it manager", "founder"];
+  if (/operations|operativ|amministr|finance|finanz|cfo/.test(value)) return ["operations", "operativ", "amministr", "finance", "cfo", "founder", "ceo"];
   if (/tech|technical|cto|developer|svilupp/.test(value)) return ["cto", "technical", "developer", "svilupp", "engineer", "founder"];
   return ["founder", "ceo", "owner", "director", "manager"];
+}
+
+function decisionMakerLabel(audience: string) {
+  const value = normalizedText(audience);
+  if (/sales|commercial|vendit|revenue|business development/.test(value)) return "responsabili commerciali e business development";
+  if (/marketing|growth|comunicaz/.test(value)) return "responsabili marketing e growth";
+  if (/ecommerce|e-commerce|retail|digital/.test(value)) return "responsabili ecommerce, digital e marketing";
+  if (/hr|human resources|people|talent|risorse umane/.test(value)) return "responsabili HR, People e Talent Acquisition";
+  if (/ciso|cyber|security|sicurezz|\bit\b|cto/.test(value)) return "CISO, CTO e responsabili IT";
+  if (/operations|operativ|amministr|finance|finanz|cfo/.test(value)) return "responsabili operativi, amministrativi e finance";
+  return "founder e responsabili della funzione coinvolta";
 }
 function personFromEmail(email: string) {
   const local = email.split("@")[0], bits = local.split(/[._-]+/).filter(Boolean);
@@ -348,9 +436,10 @@ function personFromEmail(email: string) {
   return { firstName: titleCase(bits[0]), lastName: titleCase(bits.slice(1).join(" ")) };
 }
 
-async function prospectsFromCompany(companyUrl: string, fetcher: typeof fetch, relevanceTerms: string[], preferredRoles: string[], territory: string): Promise<PublicProspect[]> {
+async function prospectsFromCompany(companyUrl: string, fetcher: typeof fetch, relevanceTerms: string[], preferredRoles: string[], territory: string, competitorSignals: string[], minimumAudienceMatches: number): Promise<PublicProspect[]> {
   const target = new URL(companyUrl), home = await fetchHtml(target.origin, fetcher), domain = hostOf(home.url), homeAnalysis = await analyzeWebsite(home.url, async () => new Response(home.html, { status: 200 }));
-  if (looksLikePublisherOrDirectory(homeAnalysis, home.html) || !companyMatchesTerritory(home.url, `${homeAnalysis.title} ${homeAnalysis.summary} ${home.html}`, territory) || !companyMatchesAudience(`${homeAnalysis.title} ${homeAnalysis.summary} ${home.html}`, relevanceTerms)) return [];
+  const companyDocument = `${homeAnalysis.title} ${homeAnalysis.summary} ${home.html}`;
+  if (looksLikePublisherOrDirectory(homeAnalysis, home.html) || companyLooksLikeCompetitor(companyDocument, competitorSignals) || !companyMatchesTerritory(home.url, companyDocument, territory) || !companyMatchesAudience(companyDocument, relevanceTerms, minimumAudienceMatches)) return [];
   const titleName = homeAnalysis.title.split(/[|–—-]/)[0]?.trim(), companyName = /^(?:brainpress|wordpress)$/i.test(homeAnalysis.name) || homeAnalysis.name.length > 60 ? (titleName.length <= 60 ? titleName : titleCase(domain.split(".")[0])) : homeAnalysis.name;
   const linkedPages = publicPageLinks(home.html, home.url);
   const commonPages = linkedPages.length >= 3 ? [] : ["/about", "/team", "/chi-siamo", "/contatti"].map((path) => new URL(path, home.url).href);
@@ -403,20 +492,29 @@ export async function discoverPublicProspects(input: { url: string; audience?: s
   try {
     const analysis = await analyzeWebsite(input.url, timedFetcher(12_000)), sourceHost = hostOf(analysis.url);
     const requestedAudience = input.audience?.trim() || "", inferred = inferredBuyer(analysis), requestedTerms = audienceTerms(requestedAudience);
-    const researchIntent = requestedTerms.length ? requestedAudience : inferred;
-    const relevanceTerms = audienceTerms(researchIntent), coreIntent = relevanceTerms.join(" ") || researchIntent, preferredRoles = desiredRoleTerms(requestedAudience || researchIntent);
+    const hasRequestedAudience = Boolean(requestedAudience), hasRequestedCompanyTerms = requestedTerms.length > 0;
+    const researchIntent = hasRequestedCompanyTerms ? requestedAudience : inferred.target;
+    const queryIntent = hasRequestedAudience ? requestedAudience : researchIntent;
+    const relevanceTerms = hasRequestedCompanyTerms ? requestedTerms : inferred.fitTerms;
+    const coreIntent = hasRequestedCompanyTerms ? (relevanceTerms.join(" ") || researchIntent) : inferred.searchIntent;
+    const roleIntent = hasRequestedAudience ? requestedAudience : inferred.decisionMakers, preferredRoles = desiredRoleTerms(roleIntent);
+    const normalizedAudience = normalizedText(requestedAudience);
+    const audienceOverridesCompetitorFilter = Boolean(requestedAudience) && inferred.competitorSignals.some((signal) => normalizedAudience.includes(normalizedText(signal)));
+    const competitorSignals = audienceOverridesCompetitorFilter ? [] : inferred.competitorSignals;
     const territory = input.territory?.trim() || "Europa", normalizedTerritory = normalizedText(territory), italianMarket = /\b(italia|italian|italy)\b/.test(normalizedTerritory);
-    const query = `${requestedAudience || inferred} · ${territory}`;
+    const query = `${queryIntent} · ${territory}`;
     const marketScope = italianMarket ? "site:.it" : /\bdach\b/.test(normalizedTerritory) ? "(site:.de OR site:.at OR site:.ch)" : /\b(france|francia|french)\b/.test(normalizedTerritory) ? "site:.fr" : "";
     const roleQuery = preferredRoles.includes("sales") ? '("Sales Director" OR "direttore commerciale")' : preferredRoles.includes("marketing") ? '("Marketing Director" OR "direttore marketing")' : preferredRoles.includes("cto") ? '("CTO" OR "direttore tecnico")' : "founder CEO";
     const channels = discoveryChannelsFor(researchIntent, territory), contextSources = contextSourcesFor(researchIntent, territory);
+    const inferredAngleQueries = hasRequestedCompanyTerms ? [] : inferred.searchAngles.map((angle) => `${marketScope} ${angle} ${roleQuery}`);
     const queries = [...new Set([
       `${marketScope} ${coreIntent} azienda`,
       `${marketScope} ${coreIntent} ${roleQuery}`,
       `${coreIntent} companies ${territory}`,
       `${marketScope} ${coreIntent} team leadership ${roleQuery}`,
       `${marketScope} ${coreIntent} "chi siamo" ${roleQuery}`,
-    ])].slice(0, 5);
+      ...inferredAngleQueries,
+    ])].slice(0, 8);
     const searchRequests: Array<{ url: string; channelId?: string }> = [
       ...channels.map((channel) => ({ url: `https://search.yahoo.com/search?p=${encodeURIComponent(channel.query(coreIntent, territory))}`, channelId: channel.id })),
       ...queries.flatMap((value) => [
@@ -470,7 +568,7 @@ export async function discoverPublicProspects(input: { url: string; audience?: s
     const prospects: PublicProspect[] = [];
     const rows: PromiseSettledResult<PublicProspect[]>[] = [], companyFetcher = timedFetcher(12_000);
     for (let start = 0; start < companyUrls.length && !controller.signal.aborted; start += 8) {
-      const batchRows = await Promise.allSettled(companyUrls.slice(start, start + 8).map((url) => prospectsFromCompany(url, companyFetcher, relevanceTerms, preferredRoles, territory)));
+      const batchRows = await Promise.allSettled(companyUrls.slice(start, start + 8).map((url) => prospectsFromCompany(url, companyFetcher, relevanceTerms, preferredRoles, territory, competitorSignals, hasRequestedCompanyTerms ? 2 : 1)));
       rows.push(...batchRows);
       for (const row of batchRows) if (row.status === "fulfilled") for (const prospect of row.value) if (!prospects.some((candidate) => candidate.email === prospect.email)) prospects.push(prospect);
       if (prospects.length >= limit) break;
@@ -490,6 +588,12 @@ export async function discoverPublicProspects(input: { url: string; audience?: s
       sourcesScanned: rows.length,
       partial: controller.signal.aborted || searchRows.some((row) => row.status === "rejected") || expansionRows.some((row) => row.status === "rejected") || rows.some((row) => row.status === "rejected"),
       strategy: {
+        buyerProfile: {
+          target: researchIntent,
+          decisionMakers: hasRequestedAudience ? decisionMakerLabel(requestedAudience) : inferred.decisionMakers,
+          source: hasRequestedCompanyTerms ? "provided" as const : "inferred" as const,
+        },
+        competitorPolicy: audienceOverridesCompetitorFilter ? "buyer_override" as const : competitorSignals.length ? "exclude_competing_vendors" as const : "not_applicable" as const,
         channels: channels.map(({ id, label, category, purpose }) => ({ id, label, category, purpose, resultsFound: (channelResults.get(id) ?? 0) > 0 })),
         contextSources,
         contactPolicy: "official_company_sites_only" as const,
