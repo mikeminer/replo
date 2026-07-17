@@ -53,7 +53,7 @@ export async function resolveOwned(seed: PersonSeed): Promise<Candidate | null> 
 const blockedHosts = new Set(["duckduckgo.com", "google.com", "bing.com", "yahoo.com", "yimg.com", "linkedin.com", "facebook.com", "instagram.com", "x.com", "twitter.com", "youtube.com", "wikipedia.org", "indeed.com", "glassdoor.com", "crunchbase.com", "g2.com", "trustpilot.com", "yelp.com", "reddit.com", "topconsumerreviews.com"]);
 const genericMailboxes = new Set(["admin", "billing", "careers", "contact", "hello", "info", "jobs", "legal", "marketing", "office", "press", "privacy", "sales", "support", "team"]);
 const genericMailboxTokens = new Set(["account", "accounts", "anonymous", "anonimo", "care", "complaint", "complaints", "consumer", "consumerrelations", "customer", "customers", "customerservice", "editorial", "enquiry", "enquiries", "help", "imprese", "inquiry", "media", "redazione", "relations", "service", "services", "webmaster"]);
-const nonPersonTokens = new Set("about advantage agency ai animalia artificial azienda brands business certificazioni chief commission company contact contacts corsi course data designer dettagli director ecommerce experience featured group gruppo innovation intelligence investor longevity management manager managing market marketing member nostre officer operator platform posizionamento premio product prodotti professional project ready relazioni researcher retail security service servizi solution soluzioni specialist strategia strategie strategy suite team technology tocca toolkit ui ux valore".split(" "));
+const nonPersonTokens = new Set("about advantage agency ai animalia artificial azienda brands business certificazioni chief commission company consulente consulenza contact contacts corsi course data designer dettagli director ecommerce experience featured group gruppo hr innovation intelligence investor longevity management manager managing market marketing member nostre officer operator platform podcast posizionamento premio product prodotti professional project ready recruitment recruiting relazioni researcher retail sales security service servizi solution soluzioni specialist strategia strategie strategy suite talk team technology tocca toolkit ui ux valore web webinar".split(" "));
 const stopWords = new Set("about after also and are been being business can company could from have into more most not our product services software solution that the their them they this through use using was were what when where which will with your you per una che con del della delle dei gli nel nella non più sua suo".split(" "));
 const audienceNoise = new Set("azienda aziende business ceo chief commercial commerciale commerciali company companies cto direttore direttori director founder founders head imprese manager responsabile responsabili sales societa società team teams vice president vp".split(" "));
 
@@ -164,8 +164,8 @@ function inferredBuyer(analysis: WebsiteAnalysis): BuyerIntent {
     searchIntent: "aziende B2B crescita espansione commerciale nuovi mercati",
     fitTerms: ["b2b", "crescita", "espansione", "commerciale", "export"],
     decisionMakers: "responsabili commerciali, business development e founder",
-    competitorSignals: ["lead generation", "generazione lead", "outbound platform", "piattaforma outbound", "sales automation", "automazione vendite", "sales intelligence", "prospecting platform", "piattaforma di prospecting", "cold email", "email outreach", "appointment setting", "presa appuntamenti", "database contatti", "trova contatti", "find prospects", "find leads"],
-    searchAngles: ["espansione commerciale nuovi mercati", "team sales business development", "crescita B2B export"],
+    competitorSignals: ["lead generation", "generazione lead", "outbound platform", "piattaforma outbound", "sales automation", "automazione vendite", "sales intelligence", "prospecting platform", "piattaforma di prospecting", "cold email", "email outreach", "appointment setting", "presa appuntamenti", "database contatti", "trova contatti", "find prospects", "find leads", "agenzia commerciale", "agenzia marketing", "marketing agency", "web marketing", "marketing automation", "digital marketing", "sviluppo commerciale b2b", "sviluppo reti vendita", "sviluppo delle reti commerciali", "partner della tua rete vendita", "consulenza commerciale", "consulenza direzionale", "consulente marketing strategico", "marketing in affitto", "sales outsourcing", "outsourced sales", "fractional sales", "go-to-market consulting", "business development as a service", "servizi per l'export", "servizi di internazionalizzazione", "inserimento commerciale", "selezione buyer", "digital export marketing", "piano export", "export consulting", "consulenza export"],
+    searchAngles: ["azienda manifatturiera export mercati esteri", "software B2B team sales", "PMI innovativa espansione internazionale", "azienda industriale business development", "azienda tecnologica direzione commerciale"],
   };
   if (/e-?commerce|negozi|retail|shop/.test(context)) return {
     target: "brand ecommerce e retailer con un canale digitale in crescita",
@@ -239,9 +239,18 @@ function companyLooksLikeCompetitor(html: string, signals: string[]) {
   const haystack = normalizedText(textFromHtml(html).slice(0, 30_000));
   const matches = signals.filter((signal) => haystack.includes(normalizedText(signal)));
   if (matches.length >= 2) return true;
-  const vendorIdentity = /\b(agency|agenzia|piattaforma|platform|service|servizi|software|solution|soluzione|tool|strumento)\b/.test(haystack);
-  const supplierClaim = /\b(aiutiamo|forniamo|la nostra piattaforma|offriamo|our platform|our service|servizi? di|software per|we help|we offer|we provide)\b/.test(haystack);
-  return matches.length === 1 && vendorIdentity && supplierClaim;
+  const vendorIdentity = /\b(agency|agenzia|boutique|consulting|consulenza|piattaforma|platform|service|servizi|software|solution|soluzione|tool|strumento)\b/.test(haystack);
+  const supplierClaim = /\b(aiuta|aiutiamo|forniamo|la nostra piattaforma|offriamo|our platform|our service|servizi? di|software per|we help|we offer|we provide)\b/.test(haystack);
+  const serviceBusiness = /\b(agency|agenzi[a-z]*|boutique|consultant[a-z]*|consulent[a-z]*|consulting|consulenza|studio professionale)\b/.test(haystack);
+  const adjacentOfferCategories = [
+    /\b(outbound|prospect|lead generation|appointment setting)\b/,
+    /\b(marketing|comunicazione|communication)\b/,
+    /\b(sales|vendit[a-z]*|commercial[a-z]*|business development)\b/,
+    /\b(export|internazionalizz[a-z]*|mercati esteri)\b/,
+    /\b(growth|go-to-market|crescita del fatturato)\b/,
+    /\b(e-?commerce|seo|web marketing|siti web)\b/,
+  ].filter((pattern) => pattern.test(haystack)).length;
+  return (matches.length === 1 && vendorIdentity && supplierClaim) || (serviceBusiness && adjacentOfferCategories >= 2);
 }
 
 function companyMatchesTerritory(url: string, html: string, territory: string) {
@@ -346,6 +355,12 @@ function plausibleCompanyPage(value: string) {
     return segments.length <= 2 && segments.some((segment) => companyPage.test(segment));
   } catch { return false; }
 }
+function companyIdentityPage(value: string) {
+  try {
+    const segments = new URL(value).pathname.toLowerCase().split("/").filter(Boolean);
+    return segments.some((segment) => /^(?:about|about-us|azienda|chi-siamo|company|contact|contacts|contatti|direzione|fondatori|founders|leadership|management|our-team|people|persone|squadra|staff|team|who-we-are)$/.test(segment));
+  } catch { return false; }
+}
 function publicPageLinks(html: string, base: string) {
   const links: string[] = [];
   for (const match of html.matchAll(/<a[^>]+href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)) try {
@@ -432,7 +447,7 @@ function decisionMakerLabel(audience: string) {
 }
 function personFromEmail(email: string) {
   const local = email.split("@")[0], bits = local.split(/[._-]+/).filter(Boolean);
-  if (bits.length < 2 || bits.length > 4 || !bits.every((x) => /^[a-z]{2,}$/i.test(x)) || bits.some((x) => genericMailboxTokens.has(x.toLowerCase()))) return null;
+  if (bits.length < 2 || bits.length > 4 || !bits.every((x) => /^[a-z]{2,}$/i.test(x)) || bits.some((x) => genericMailboxTokens.has(x.toLowerCase()) || genericMailboxes.has(x.toLowerCase()))) return null;
   return { firstName: titleCase(bits[0]), lastName: titleCase(bits.slice(1).join(" ")) };
 }
 
@@ -448,8 +463,10 @@ async function prospectsFromCompany(companyUrl: string, fetcher: typeof fetch, r
   const pages = [{ url: home.url, html: home.html }, ...fetched.filter((row): row is PromiseFulfilledResult<{ url: string; html: string }> => row.status === "fulfilled").map((row) => row.value)];
   const found: PublicProspect[] = [], seen = new Set<string>();
   for (const page of pages) {
+    if (page.url !== home.url && page.html === home.html) continue;
     const visiblePageText = normalizedText(textFromHtml(page.html).slice(0, 80_000));
     if (/lorem ipsum|team member element|demo content|sample team/.test(visiblePageText)) continue;
+    const canGeneratePattern = companyIdentityPage(page.url);
     const publishedEmails = extractEmails(page.html, domain);
     const people = [...peopleFromJsonLd(page.html), ...peopleFromVisiblePage(page.html)]
       .filter((person, index, all) => all.findIndex((candidate) => normalizedText(`${candidate.firstName} ${candidate.lastName}`) === normalizedText(`${person.firstName} ${person.lastName}`)) === index)
@@ -462,7 +479,7 @@ async function prospectsFromCompany(companyUrl: string, fetcher: typeof fetch, r
         const local = clean(email.split("@")[0]);
         return [`${first}${last}`, `${first[0]}${last}`, `${first}${last[0]}`].includes(local);
       });
-      const candidate = publishedCandidate ?? generateCandidates({ ...person, domain })[0]; if (!candidate || seen.has(candidate.email)) continue;
+      const candidate = publishedCandidate ?? (canGeneratePattern ? generateCandidates({ ...person, domain })[0] : undefined); if (!candidate || seen.has(candidate.email)) continue;
       seen.add(candidate.email);
       found.push({ ...person, domain, ...(publishedCandidate ? { knownEmail: candidate.email } : {}), email: candidate.email, companyName, confidence: publishedCandidate ? candidate.confidence : 0.68, verification: publishedCandidate ? "valid" : "risky", source: publishedCandidate ? "public_page" : "owned_pattern", sourceUrl: page.url, evidence: publishedCandidate ? "Email e persona pubblicate sul sito aziendale" : "Persona pubblicata sul sito ufficiale; indirizzo costruito con lo schema più comune e marcato da verificare" });
     }
@@ -479,9 +496,9 @@ async function prospectsFromCompany(companyUrl: string, fetcher: typeof fetch, r
 
 export async function discoverPublicProspects(input: { url: string; audience?: string; territory?: string; limit?: number }, fetcher: typeof fetch = fetch) {
   const limit = Math.min(Math.max(input.limit ?? 12, 1), 30);
-  const discoveryBudgetMs = Math.min(55_000, 32_000 + limit * 700);
-  const expansionLimit = Math.min(18, Math.max(10, Math.ceil(limit * 0.8)));
-  const companyLimit = Math.min(42, Math.max(24, limit * 2));
+  const discoveryBudgetMs = Math.min(75_000, 44_000 + limit * 900);
+  const expansionLimit = Math.min(24, Math.max(12, limit));
+  const companyLimit = Math.min(54, Math.max(36, Math.ceil(limit * 2.5)));
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(new Error("Discovery time budget reached")), discoveryBudgetMs);
   const boundedFetcher = ((resource: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => fetcher(resource, { ...init, signal: init?.signal ? AbortSignal.any([controller.signal, init.signal]) : controller.signal })) as typeof fetch;
@@ -499,7 +516,8 @@ export async function discoverPublicProspects(input: { url: string; audience?: s
     const coreIntent = hasRequestedCompanyTerms ? (relevanceTerms.join(" ") || researchIntent) : inferred.searchIntent;
     const roleIntent = hasRequestedAudience ? requestedAudience : inferred.decisionMakers, preferredRoles = desiredRoleTerms(roleIntent);
     const normalizedAudience = normalizedText(requestedAudience);
-    const audienceOverridesCompetitorFilter = Boolean(requestedAudience) && inferred.competitorSignals.some((signal) => normalizedAudience.includes(normalizedText(signal)));
+    const audienceNamesSupplierService = /\b(agenzi[a-z]*|agency|consult[a-z]*|freelance|studio|servizi)\b/.test(normalizedAudience) && /\b(business development|commercial[a-z]*|export|growth|lead|marketing|outbound|sales|web)\b/.test(normalizedAudience);
+    const audienceOverridesCompetitorFilter = Boolean(requestedAudience) && (audienceNamesSupplierService || inferred.competitorSignals.some((signal) => normalizedAudience.includes(normalizedText(signal))));
     const competitorSignals = audienceOverridesCompetitorFilter ? [] : inferred.competitorSignals;
     const territory = input.territory?.trim() || "Europa", normalizedTerritory = normalizedText(territory), italianMarket = /\b(italia|italian|italy)\b/.test(normalizedTerritory);
     const query = `${queryIntent} · ${territory}`;
@@ -507,14 +525,23 @@ export async function discoverPublicProspects(input: { url: string; audience?: s
     const roleQuery = preferredRoles.includes("sales") ? '("Sales Director" OR "direttore commerciale")' : preferredRoles.includes("marketing") ? '("Marketing Director" OR "direttore marketing")' : preferredRoles.includes("cto") ? '("CTO" OR "direttore tecnico")' : "founder CEO";
     const channels = discoveryChannelsFor(researchIntent, territory), contextSources = contextSourcesFor(researchIntent, territory);
     const inferredAngleQueries = hasRequestedCompanyTerms ? [] : inferred.searchAngles.map((angle) => `${marketScope} ${angle} ${roleQuery}`);
+    const negativeSupplierQuery = competitorSignals.length ? "-agenzia -consulenza -consulting -outbound -lead-generation -sales-outsourcing" : "";
+    const identityQueries = italianMarket ? [
+      `site:.it/chi-siamo ("Direttore Commerciale" OR "Business Development Manager") ${negativeSupplierQuery}`,
+      `site:.it/team ("Sales Director" OR "Head of Sales") ${negativeSupplierQuery}`,
+      `site:.it/azienda export ("direttore commerciale" OR "business development") ${negativeSupplierQuery}`,
+    ] : [
+      `${marketScope} team ("Sales Director" OR "Business Development Manager") ${negativeSupplierQuery}`,
+    ];
     const queries = [...new Set([
-      `${marketScope} ${coreIntent} azienda`,
-      `${marketScope} ${coreIntent} ${roleQuery}`,
-      `${coreIntent} companies ${territory}`,
-      `${marketScope} ${coreIntent} team leadership ${roleQuery}`,
-      `${marketScope} ${coreIntent} "chi siamo" ${roleQuery}`,
-      ...inferredAngleQueries,
-    ])].slice(0, 8);
+      `${marketScope} ${coreIntent} azienda ${negativeSupplierQuery}`,
+      `${marketScope} ${coreIntent} ${roleQuery} ${negativeSupplierQuery}`,
+      `${coreIntent} companies ${territory} ${negativeSupplierQuery}`,
+      `${marketScope} ${coreIntent} team leadership ${roleQuery} ${negativeSupplierQuery}`,
+      `${marketScope} ${coreIntent} "chi siamo" ${roleQuery} ${negativeSupplierQuery}`,
+      ...identityQueries,
+      ...inferredAngleQueries.map((value) => `${value} ${negativeSupplierQuery}`),
+    ])].slice(0, 12);
     const searchRequests: Array<{ url: string; channelId?: string }> = [
       ...channels.map((channel) => ({ url: `https://search.yahoo.com/search?p=${encodeURIComponent(channel.query(coreIntent, territory))}`, channelId: channel.id })),
       ...queries.flatMap((value) => [

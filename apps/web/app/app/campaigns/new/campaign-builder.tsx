@@ -113,7 +113,7 @@ export function CampaignBuilder() {
         <button className="btn mint" disabled={pending}>
           {pending ? "Ricerca approfondita in corso…" : "Trova contatti e prepara le email"}
         </button>
-        <p className="muted search-timing-note">La ricerca approfondita può richiedere fino a circa un minuto: Replo continua ad ampliare le fonti finché trova abbastanza prove affidabili.</p>
+        <p className="muted search-timing-note">La ricerca approfondita può richiedere fino a circa un minuto e mezzo: Replo amplia fonti e settori finché trova prove affidabili, senza riempire i risultati con consulenti o concorrenti.</p>
       </form>
 
       {state.discovery && (

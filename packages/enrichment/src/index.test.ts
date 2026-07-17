@@ -33,9 +33,11 @@ describe("public-web discovery", () => {
 
   it("infers the buyer side of go-to-market and excludes competing vendors", async () => {
     const calls: string[] = [];
-    const searchResults = `<li class="b_algo"><a href="https://competitor.it/">Competitor</a></li><li class="b_algo"><a href="https://buyer.it/">Buyer</a></li>`;
+    const searchResults = `<li class="b_algo"><a href="https://competitor.it/">Competitor</a></li><li class="b_algo"><a href="https://export-advisor.it/">Export Advisor</a></li><li class="b_algo"><a href="https://buyer.it/">Buyer</a></li>`;
     const competitorHome = `<!doctype html><title>Outbound Pro</title><meta name="description" content="Piattaforma outbound di lead generation e sales automation per aziende B2B in Italia"><a href="/team">Team</a>`;
     const competitorTeam = `<section><p>Founder</p><p>Carlo Rossi</p><p>carlo.rossi@competitor.it</p></section>`;
+    const adjacentCompetitorHome = `<!doctype html><title>Export Advisor</title><meta name="description" content="Consulenza per aziende B2B italiane in crescita"><p>Servizi per l'export</p><p>Inserimento commerciale personalizzato</p><p>Selezione buyer e agenti esteri</p><a href="/team">Team</a>`;
+    const adjacentCompetitorTeam = `<section><p>Sales Director</p><p>Paolo Neri</p><p>paolo.neri@export-advisor.it</p></section>`;
     const buyerHome = `<!doctype html><title>Fabbrica Nord</title><meta name="description" content="Azienda B2B manifatturiera italiana in crescita, con espansione commerciale ed export in nuovi mercati"><a href="/team">Team</a>`;
     const buyerTeam = `<section><p>Sales Director</p><p>Giulia Bianchi</p><p>giulia.bianchi@buyer.it</p></section>`;
     const buyerFetcher = (async (input: string | URL | Request) => {
@@ -44,6 +46,8 @@ describe("public-web discovery", () => {
       if (url.includes("bing.com/search") || url.includes("duckduckgo.com/html") || url.includes("search.yahoo.com")) return new Response(searchResults);
       if (url.includes("competitor.it/team")) return new Response(competitorTeam);
       if (url.includes("competitor.it")) return new Response(competitorHome);
+      if (url.includes("export-advisor.it/team")) return new Response(adjacentCompetitorTeam);
+      if (url.includes("export-advisor.it")) return new Response(adjacentCompetitorHome);
       if (url.includes("buyer.it/team")) return new Response(buyerTeam);
       if (url.includes("buyer.it")) return new Response(buyerHome);
       return new Response("");
@@ -56,7 +60,10 @@ describe("public-web discovery", () => {
     expect(result.strategy.competitorPolicy).toBe("exclude_competing_vendors");
     expect(result.prospects).toEqual([expect.objectContaining({ firstName: "Giulia", domain: "buyer.it" })]);
     expect(result.prospects).not.toEqual(expect.arrayContaining([expect.objectContaining({ domain: "competitor.it" })]));
+    expect(result.prospects).not.toEqual(expect.arrayContaining([expect.objectContaining({ domain: "export-advisor.it" })]));
     expect(calls.some((url) => url.includes("nuovi mercati") || url.includes("espansione commerciale"))).toBe(true);
+    expect(calls.some((url) => url.includes("azienda manifatturiera") && url.includes("-consulenza"))).toBe(true);
+    expect(calls.some((url) => url.includes("site:.it/chi-siamo") && url.includes("Business Development Manager"))).toBe(true);
     expect(calls.some((url) => url.includes("software B2B SaaS"))).toBe(false);
   });
 
@@ -77,6 +84,26 @@ describe("public-web discovery", () => {
     expect(result.strategy.buyerProfile.source).toBe("provided");
     expect(result.strategy.competitorPolicy).toBe("buyer_override");
     expect(result.prospects).toEqual(expect.arrayContaining([expect.objectContaining({ firstName: "Elena", domain: "agency.it" })]));
+  });
+
+  it("rejects navigation or format labels that look like people", async () => {
+    const recruitingHome = `<!doctype html><title>Recruiting Italia</title><meta name="description" content="Azienda B2B di recruiting con sede in Italia"><a href="/team">Team</a><section><p>Sales Talk</p><p>Sales recruitment specialists</p></section><section><p>Nicola Montanari</p><p>CEO di un'azienda cliente</p></section><section><p>Consulenza HR</p><p>Area Sales</p></section>`;
+    const recruitingTeam = `<section><p>Founder</p><p>Elena Verdi</p><p>elena.verdi@recruiting.it</p></section>`;
+    const recruitingFetcher = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === "https://replo.test") return new Response(product);
+      if (url.includes("bing.com/search") || url.includes("duckduckgo.com/html") || url.includes("search.yahoo.com")) return new Response(`<li class="b_algo"><a href="https://recruiting.it/">Recruiting Italia</a></li>`);
+      if (url.includes("recruiting.it/team")) return new Response(recruitingTeam);
+      if (url.includes("recruiting.it")) return new Response(recruitingHome);
+      return new Response("");
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", audience: "responsabili commerciali in aziende recruiting B2B", territory: "Italia", limit: 3 }, recruitingFetcher);
+
+    expect(result.prospects).toEqual(expect.arrayContaining([expect.objectContaining({ firstName: "Elena", domain: "recruiting.it" })]));
+    expect(result.prospects).not.toEqual(expect.arrayContaining([expect.objectContaining({ firstName: "Sales", lastName: "Talk" })]));
+    expect(result.prospects).not.toEqual(expect.arrayContaining([expect.objectContaining({ firstName: "Nicola", lastName: "Montanari" })]));
+    expect(result.prospects).not.toEqual(expect.arrayContaining([expect.objectContaining({ firstName: "Consulenza", lastName: "HR" })]));
   });
 
   it("expands across public search surfaces when the first provider has no useful result", async () => {
