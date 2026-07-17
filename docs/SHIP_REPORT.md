@@ -17,6 +17,8 @@ False positives are deliberately rejected: generic mailboxes, role labels mistak
 
 For every prospect, the web app now generates a complete visible draft: destination address, recipient name and company, subject, personalized body, sender name/signature and source evidence. The user can copy the entire email or open it via `mailto:` in the company's existing email client.
 
+The selected visual identity is live without redrawing the supplied artwork: `image (4).jpg` provides the light navigation mark, while `image (6).jpg` provides the dark app wordmark. Next.js metadata routes create a square 64×64 site icon and a 180×180 dark app/Apple icon with deterministic crops of those originals.
+
 ## Product decision: no platform sending
 
 Campaign launch, managed mailbox status, reply locking, inbox and deliverability controls have been removed from the user-facing web product. Historical Smartlead/provider code remains isolated in the backend but is dormant and is no longer a Day-1 dependency. The current workflow requires no ESP key, warmup, DKIM/tracking record, reply webhook or test send.
@@ -38,6 +40,6 @@ Operational state is maintained in [OPS_STATE.md](./OPS_STATE.md).
 ## Production verification
 
 - API deployment `dpl_3hFbxdmewanf9XnFowkotKNeZ2Nj`: `READY`, aliased to `api.replo.eu`.
-- Web deployment `dpl_3h9CiYjwrd4q33hczvGP7RMByxUh`: `READY`, aliased to `replo.it`; the same-origin `/api/health` rewrite returned `ok`.
+- Web deployment `dpl_DPvYi1HyYcr8BzC8XM96E6MatRZ7`: `READY`, aliased to `replo.it`; the same-origin `/api/health` rewrite returned `ok`.
 - Automated gates: 22 tests, full TypeScript lint, no-finder guard, all workspace builds and smoke checks passed.
-- Chrome gate: the real production Italy search at limit 20 scanned 40 official sites and returned 8 named prospects, versus 18 sites and 4 prospects before the depth increase. No `UX Researcher` false contact was present and every final source link was an official company domain. “Copia email completa” produced a 516-character payload containing `Ciao Uljan`, `Mario Rossi` and `Direttore commerciale · Azienda Demo`. The flow completed within the stated one-minute window and no application-origin browser error was observed.
+- Chrome gate: the real production Italy search at limit 20 scanned 40 official sites and returned 8 named prospects, versus 18 sites and 4 prospects before the depth increase. No `UX Researcher` false contact was present and every final source link was an official company domain. “Copia email completa” produced a 516-character payload containing `Ciao Uljan`, `Mario Rossi` and `Direttore commerciale · Azienda Demo`. The flow completed within the stated one-minute window. A second production pass verified the light navigation mark, dark app wordmark, generated icon metadata and absence of horizontal overflow; both production icon files matched their approved local hashes.

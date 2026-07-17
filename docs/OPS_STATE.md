@@ -12,6 +12,7 @@ Updated: 2026-07-17 Europe/Rome
 - Quality controls: departmental mailboxes, directory/publisher pages, placeholder/demo teams, role labels mistaken for people and off-territory companies are rejected; Italy, DACH and France searches require domain or explicit locality evidence on the official site
 - User input: product URL, optional buyer/territory, sender name, optional sender role/company; no mailing-list upload
 - Draft output: recipient address/name/company, subject, personalized body, sender name/signature, source link, complete-copy action and `mailto:` handoff
+- Brand assets: `image (4).jpg` is preserved as the light navigation mark; `image (6).jpg` is preserved as the dark app wordmark. Next.js generates a 64×64 site icon from the light mark and a clean 180×180 Apple/app icon from the dark mark
 - Email execution: user's existing business mailbox; Replo neither sends nor requires ESP credentials, mailbox warmup, reply webhooks or provider DNS
 - Discovery transport: browser uses `@replo/sdk` over the same-origin Vercel rewrite to `api.replo.eu`
 - Discovery provenance: publicly visible emails are labeled `pubblicata`; owned-domain patterns remain labeled `da verificare`
@@ -21,7 +22,7 @@ Updated: 2026-07-17 Europe/Rome
 - Domains: `replo.it` and `api.replo.eu`; Vercel ownership verified; authoritative DNS at Register.it
 - Mail DNS: existing Register.it MX/SPF preserved; no product operation requires further mail DNS changes
 - Secrets: no plaintext credentials are recorded in this file
-- Production deployments: API `dpl_3hFbxdmewanf9XnFowkotKNeZ2Nj`; web `dpl_3h9CiYjwrd4q33hczvGP7RMByxUh`; both `READY` with their custom-domain aliases
-- Verification: 22 automated tests passed; monorepo lint, build and smoke passed. Chrome ran the production Italy flow at limit 20 against `replo.it`: 40 official sites scanned, 8 named prospects returned, zero `UX Researcher` false positives, every final source on an official company domain, and the clipboard payload contained recipient name, sender name and signature. The search completed within the UI's stated one-minute window and no application-origin browser errors were observed
+- Production deployments: API `dpl_3hFbxdmewanf9XnFowkotKNeZ2Nj`; web `dpl_DPvYi1HyYcr8BzC8XM96E6MatRZ7`; both `READY` with their custom-domain aliases. Root `vercel.json` now makes the monorepo web build/output target explicit
+- Verification: 22 automated tests passed; monorepo lint, web build and smoke passed. Chrome ran the production Italy flow at limit 20 against `replo.it`: 40 official sites scanned, 8 named prospects returned, zero `UX Researcher` false positives, every final source on an official company domain, and the clipboard payload contained recipient name, sender name and signature. The search completed within the UI's stated one-minute window. Chrome also verified the light navigation logo and dark app wordmark in production; `/icon` and `/apple-icon` return the visually approved PNGs with byte-identical local/production hashes. No application-origin browser errors were observed
 
 No `BLOCKERS.md` exists because the current product can be delivered without a payment method or third-party ESP account.

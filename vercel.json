@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "corepack pnpm --filter @replo/web build",
+  "outputDirectory": "apps/web/.next",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://api.replo.eu/:path*" }
+  ]
+}
