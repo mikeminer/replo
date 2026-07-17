@@ -1,23 +1,25 @@
 ================================================================================
-PASTE THIS AS THE FIRST MESSAGE TO CHATGPT CODEX (with repo open)
+PASTE THIS AS THE FIRST MESSAGE TO CHATGPT CODEX
 ================================================================================
 
-Read and execute CODEX_MASTER_PROMPT.md and AGENTS.md in this repository end-to-end.
+Read and fully execute CODEX_MASTER_PROMPT.md and AGENTS.md end-to-end.
 
-You are an autonomous senior full-stack engineer. Build the complete Replo MVP in https://github.com/mikeminer/replo until it is implemented, tested, and documented.
+Build the COMPLETE Replo product (not a demo stub) in this repo.
 
-Hard requirements:
-1) Monorepo: apps/api (replo.eu API platform) + apps/web (replo.it app that ONLY calls the API via SDK/HTTP — no direct DB business logic sharing for GTM ops).
-2) ZERO third-party email finders / ZERO waterfall fallback (no Hunter, LeadMagic, Findymail, Apollo, etc.). Proprietary enrichment only in packages/enrichment.
-3) Free plan shows replies exist but content is LOCKED/redacted server-side; monthly Pro subscription unlocks full replies, respond, book.
-4) Simulated email send + simulate-reply for demo/tests; mock LLM when no API key.
-5) Postgres + Drizzle, Stripe or BILLING_MOCK, docker-compose, CI, seed user demo@replo.it / demo1234.
-6) Work phases 0→5 without stopping. Keep docs/PROGRESS.md updated. Finish only when pnpm test, pnpm build, and pnpm smoke pass. Write docs/SHIP_REPORT.md.
+CRITICAL — REAL DELIVERABILITY DAY 1:
+- Implement a FULL Smartlead API integration (preferred) or full Instantly integration in packages/sending.
+- Production path SEND_PROVIDER=smartlead must create campaigns, push leads, set sequences, start sending REAL email, and ingest REAL reply + bounce webhooks.
+- Free tier: limited REAL sends from Replo-managed mailboxes; reply CONTENT redacted server-side until Pro monthly subscription.
+- Mock sender is ONLY for CI when keys are missing — shipping simulate-only as the product is FAILURE.
+- Write docs/DELIVERABILITY_RUNBOOK.md (DNS SPF/DKIM/DMARC, warmup, webhooks, ramp).
+- Implement scripts/verify-esp-connection.ts and pnpm smoke:live (only to LIVE_TEST_LEAD_EMAIL you control).
 
-Start Phase 0 now: scaffold monorepo, docker-compose, drizzle schema, then continue until DONE criteria in CODEX_MASTER_PROMPT.md §1 are all satisfied.
+Also required:
+1) apps/api = replo.eu platform; apps/web = replo.it consuming API only via SDK/HTTP.
+2) ZERO third-party email FINDERS (no Hunter/LeadMagic/Findymail/Apollo find). Proprietary packages/enrichment only.
+3) Stripe Pro monthly (or BILLING_MOCK) unlocks full replies + respond + book.
+4) Phases 0→5 without stopping. docs/PROGRESS.md updates. Finish when pnpm test, build, smoke pass AND real ESP client is complete. docs/SHIP_REPORT.md must include "Real deliverability Day 1".
+
+Start Phase 0 now. No confirmation between phases. Never add email broker finders. Never replace real ESP with simulate-only architecture.
 
 ================================================================================
-OPTIONAL: if Codex supports long agents, also say:
-================================================================================
-
-Do not ask me for confirmation between phases. If secrets are missing, use mocks and .env.example and continue. Never implement external email broker APIs.

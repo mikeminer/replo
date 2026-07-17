@@ -1,37 +1,26 @@
 # AGENTS.md — Replo
 
-You are building **Replo** in this repository.
+## Mandatory reads
+1. **`CODEX_MASTER_PROMPT.md`** — source of truth  
+2. Build until DONE criteria pass, including **real deliverability Day 1**
 
-## Read first (mandatory)
-
-1. **`CODEX_MASTER_PROMPT.md`** — full autonomous build contract (source of truth)
-2. Follow phases 0→5 until DONE criteria pass
-3. Update `docs/PROGRESS.md` as you work
-4. End with `docs/SHIP_REPORT.md`
-
-## Product split
-
-| Surface | App | Role |
-|---------|-----|------|
-| replo.eu | `apps/api` | Sellable API platform for third parties |
-| replo.it | `apps/web` | B2B web app; **must** use API via `@replo/sdk` / HTTP only |
+## Product
+| Domain | Code | Role |
+|--------|------|------|
+| replo.eu | `apps/api` + `packages/sending` | API platform + real ESP |
+| replo.it | `apps/web` | B2B app via `@replo/sdk` only |
 
 ## Hard laws
+1. **No** third-party email *finders* / no finder fallback  
+2. **Yes** real cold-email **sending** Day 1 via **Smartlead** (preferred) or Instantly — full client, not stub  
+3. Free: reply bodies **redacted server-side**; Pro monthly unlocks  
+4. Free sends from **Replo-managed** mailboxes (not user Gmail)  
+5. Mocks only for CI (`SEND_PROVIDER=mock`); product path is real ESP  
+6. Ship `docs/DELIVERABILITY_RUNBOOK.md` + `scripts/verify-esp-connection.ts` + `pnpm smoke:live`
 
-- **No** third-party email finders (Hunter, LeadMagic, Findymail, Apollo, etc.) and **no fallback** to them
-- Free plan: reply **content redacted server-side**; Pro monthly unlocks
-- Tests must pass (`pnpm test`, `pnpm build`, `pnpm smoke`)
+## Done only when
+- `pnpm test` && `pnpm build` && `pnpm smoke` pass  
+- Smartlead/Instantly adapter complete + webhook reply/bounce  
+- SHIP_REPORT documents real deliverability go-live  
 
-## Commands (target)
-
-```bash
-docker compose up -d
-pnpm install
-pnpm db:migrate
-pnpm db:seed
-pnpm dev
-pnpm test
-pnpm smoke
-```
-
-Do not stop at scaffolding. Ship the MVP defined in `CODEX_MASTER_PROMPT.md`.
+Do not deliver a simulate-only product.
