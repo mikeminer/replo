@@ -1,12 +1,5 @@
 # Blocker operativo
 
-## Catalogo Stripe sandbox a tre piani
-
-- **Stato:** codice, database, UI, Checkout e webhook supportano Startup, Partner ed Enterprise; la creazione dei tre prodotti/prezzi nel catalogo Stripe sandbox è bloccata dal nuovo challenge 2FA della sessione Stripe.
-- **Evidenza:** Stripe richiede il codice a sei cifre inviato al numero che termina in `1616`. Le credenziali Vercel sono correttamente cifrate e non possono essere estratte; il tentativo non ha lasciato variabili prezzo vuote o fittizie.
-- **Sblocco:** fornire il codice 2FA corrente, quindi creare i prezzi mensili da €7,90, €49,90 e €247,90 e salvarne gli ID nelle tre variabili Vercel già previste dal codice.
-- **Impatto:** login, dashboard, piani, limiti, chiavi e API sono operativi; per un nuovo workspace il Checkout dei tre nuovi piani resta indisponibile finché il catalogo non viene creato.
-
 ## Incassi Stripe live
 
 - **Stato:** la fatturazione è implementata e verificata end-to-end in Stripe sandbox, ma l'account disponibile non è ancora abilitato/configurato per incassi live.

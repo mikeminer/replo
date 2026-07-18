@@ -8,11 +8,11 @@
 
 Le chiavi emesse da `replo.eu` vengono mostrate una sola volta, salvate esclusivamente come hash SHA-256 e possono essere revocate dal cliente con effetto immediato. Startup applica 300 chiamate mensili e una sola chiave; Partner una chiave e chiamate illimitate; Enterprise chiamate e chiavi illimitate con etichette personalizzate. I limiti sono applicati dentro Supabase con lock transazionale, quindi resistono anche a richieste simultanee. `replo.it` non contiene credenziali nel client: il suo route handler autenticato usa prima la chiave personale cifrata e, se assente, la chiave dedicata dell'organizzazione `Replo App`.
 
-La migrazione live ha convertito il precedente piano Pro in Partner senza perdere l'accesso. Chrome ha verificato il workspace Partner con una chiave attiva, quota `∞` e limite di una chiave. Un test E2E separato ha creato un workspace Startup temporaneo, chiamato l'API pubblica con una chiave reale, ottenuto `200`, piano `startup` e quota residua `299`, quindi eliminato le fixture. La creazione dei tre nuovi prodotti/prezzi Stripe sandbox attende soltanto il codice 2FA richiesto da Stripe; nessuna credenziale o valore fittizio è stato lasciato in Vercel.
+La migrazione live ha convertito il precedente piano Pro in Partner senza perdere l'accesso. Chrome ha verificato il workspace Partner con una chiave attiva, quota `∞` e limite di una chiave. Un test E2E separato ha creato un workspace Startup temporaneo, chiamato l'API pubblica con una chiave reale, ottenuto `200`, piano `startup` e quota residua `299`, quindi eliminato le fixture. I tre prodotti/prezzi Stripe sandbox sono ora configurati in Production e Preview. Chrome ha aperto i tre Checkout reali e confermato €7,90, €49,90 e €247,90 al mese; nessun acquisto o addebito reale è stato completato. L'endpoint operativo e il token monouso impiegati per inizializzare il catalogo sono stati rimossi.
 
 Deploy di produzione:
 
-- Business `dpl_HvmSNJi4MHSbk2v2Y9ZFKkThYeGA` → `replo.eu`
+- Business `dpl_3NhAqp6CdUKJ8nqXG88YyHpexCw5` → `replo.eu`
 - API `dpl_BAtqckR5w2mRGWsdqREV6xp5VgrE` → `api.replo.eu`
 - Web `dpl_6yNWfKwyi7H6SEqnu389MCvDMHgS` → `replo.it`
 
@@ -65,7 +65,7 @@ Operational state is maintained in [OPS_STATE.md](./OPS_STATE.md).
 
 ## Production verification
 
-- Business deployment `dpl_HvmSNJi4MHSbk2v2Y9ZFKkThYeGA`: `READY`, aliased to `replo.eu`.
+- Business deployment `dpl_3NhAqp6CdUKJ8nqXG88YyHpexCw5`: `READY`, aliased to `replo.eu`.
 - API deployment `dpl_BAtqckR5w2mRGWsdqREV6xp5VgrE`: `READY`, aliased to `api.replo.eu`.
 - Web deployment `dpl_6yNWfKwyi7H6SEqnu389MCvDMHgS`: `READY`, aliased to `replo.it`.
 - Automated gates: 42 tests, full TypeScript lint, no-finder guard and production builds passed. Regression coverage includes all three entitlement configurations, Stripe price mapping, the strict public-demo host/route boundary, API-key hashing/authorization, AES-256-GCM credential round trips and the existing discovery controls.
