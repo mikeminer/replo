@@ -18,6 +18,10 @@ L'inferenza produce tre elementi distinti: profilo dell'azienda cliente, ruoli d
 
 La risposta API e la web app rendono visibili il buyer cercato, i ruoli decisionali e la policy applicata (`exclude_competing_vendors`, `buyer_override` o `not_applicable`), così l'interpretazione del sito è verificabile prima di usare le email.
 
+## Aziende prima delle email
+
+Il risultato è account-first: Replo continua la scansione in base al numero di aziende qualificate, non al numero grezzo di indirizzi trovati. Dopo il ranking dei ruoli seleziona una sola persona primaria per dominio aziendale. Se trova due aziende affidabili mostra due aziende, anche quando il limite richiesto è sei; non completa artificialmente la lista con altre quattro persone degli stessi account. Eventuali stakeholder secondari richiederanno un flusso separato di account mapping e non vengono mescolati alla lista go-to-market.
+
 ## Motore multi-canale
 
 Il motore sceglie i canali in base a buyer, settore e territorio, senza chiedere all'utente dove cercare:
@@ -32,6 +36,6 @@ Il motore sceglie i canali in base a buyer, settore e territorio, senza chiedere
 
 Italia, DACH e Francia hanno strategie e prove geografiche distinte. Una directory o un network non può diventare la fonte finale di un prospect: il risultato viene accettato solo dopo aver raggiunto il dominio aziendale e avervi trovato una persona pubblica con ruolo credibile. La risposta API espone i canali attivati, quelli che hanno prodotto risultati intermedi e la policy `official_company_sites_only`; la web app li mostra in italiano accanto ai risultati.
 
-Il budget di ricerca è adattivo: cresce da circa 49 a 71 secondi in base al numero di contatti richiesto. Le fonti lente hanno un limite individuale, mentre i siti aziendali vengono verificati in gruppi controllati fino a un massimo di 54 domini. Query dirette su pagine `/team`, `/chi-siamo` e `/azienda` cercano ruoli commerciali dentro aziende operative; termini negativi riducono agenzie e consulenze già nella fase di reperimento, mentre il fingerprint le ricontrolla sul sito ufficiale. Il client attende fino a 95 secondi, così una singola fonte bloccata non tronca la ricerca.
+Il budget di ricerca è adattivo: cresce da circa 63.5 a 90 secondi in base al numero di aziende richiesto. Il motore può espandere fino a 36 fonti-ponte; le fonti lente hanno un limite individuale, mentre i siti aziendali vengono verificati in gruppi controllati fino a un massimo di 54 domini. Query dirette su pagine `/team`, `/chi-siamo` e `/azienda` cercano ruoli commerciali dentro aziende operative; termini negativi riducono agenzie e consulenze già nella fase di reperimento, mentre il fingerprint le ricontrolla sul sito ufficiale. Il client attende fino a 95 secondi, così una singola fonte bloccata non tronca la ricerca.
 
 Free espone il flusso completo attuale. Pro è indicato come “in arrivo” e non è acquistabile finché liste salvate, template riutilizzabili, export e collaborazione non saranno effettivamente disponibili. Nessun piano richiede l'invio dalla piattaforma.
