@@ -24,7 +24,7 @@ export default async function AccountPage() {
     <section>
       <div className="eyebrow">Profilo Replo</div>
       <h2>Account e chiave API</h2>
-      <p className="muted">Account: {user.email}. È lo stesso account Supabase usato su replo.eu.</p>
+      <p className="muted">Account: {user.email}. È lo stesso account usato su replo.eu.</p>
       <article className="card credential-card">
         <h2>Collega la tua API Replo</h2>
         <p className="muted">Genera la chiave nel portale business, incollala qui una sola volta e Replo la userà dal server. Nel database viene conservata cifrata con AES-256-GCM.</p>
