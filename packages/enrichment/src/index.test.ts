@@ -86,6 +86,52 @@ describe("public-web discovery", () => {
     expect(result.prospects).toEqual(expect.arrayContaining([expect.objectContaining({ firstName: "Elena", domain: "agency.it" })]));
   });
 
+  it("rejects sales training and coaching providers as adjacent competitors", async () => {
+    const searchResults = `<li class="b_algo"><a href="https://sales-academy.it/">Sales Academy</a></li><li class="b_algo"><a href="https://buyer.it/">Buyer</a></li>`;
+    const trainingHome = `<!doctype html><title>Sales Academy</title><meta name="description" content="Professional sales training, sales coaching and enablement services for B2B companies in Italy"><p>We offer personalized sales performance solutions.</p><a href="/team">Team</a>`;
+    const trainingTeam = `<section><p>Sales Manager</p><p>Robert Manenica</p><p>robert.manenica@sales-academy.it</p></section>`;
+    const buyerHome = `<!doctype html><title>Fabbrica Italia</title><meta name="description" content="Azienda B2B manifatturiera italiana in crescita con un team commerciale"><a href="/team">Team</a>`;
+    const buyerTeam = `<section><p>Sales Director</p><p>Giulia Bianchi</p><p>giulia.bianchi@buyer.it</p></section>`;
+    const trainingFetcher = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === "https://replo.test") return new Response(product);
+      if (url.includes("bing.com/search") || url.includes("duckduckgo.com/html") || url.includes("search.yahoo.com")) return new Response(searchResults);
+      if (url.includes("sales-academy.it/team")) return new Response(trainingTeam);
+      if (url.includes("sales-academy.it")) return new Response(trainingHome);
+      if (url.includes("buyer.it/team")) return new Response(buyerTeam);
+      if (url.includes("buyer.it")) return new Response(buyerHome);
+      return new Response("");
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", territory: "Italia", limit: 3 }, trainingFetcher);
+
+    expect(result.prospects).toEqual([expect.objectContaining({ firstName: "Giulia", domain: "buyer.it" })]);
+    expect(result.prospects).not.toEqual(expect.arrayContaining([expect.objectContaining({ domain: "sales-academy.it" })]));
+  });
+
+  it("requires operational locality evidence instead of a bare country mention", async () => {
+    const searchResults = `<li class="b_algo"><a href="https://global-sales.net/">Global Sales</a></li><li class="b_algo"><a href="https://croatia-sales.hr/">Croatia Sales</a></li><li class="b_algo"><a href="https://italy-buyer.com/">Italy Buyer</a></li>`;
+    const globalHome = `<!doctype html><title>Global Sales</title><meta name="description" content="B2B software company serving clients worldwide"><p>Country selector: Italy, France, Croatia.</p><a href="/team">Team</a>`;
+    const croatiaHome = `<!doctype html><title>Croatia Sales</title><meta name="description" content="B2B software company headquartered in Zagreb"><p>Markets: Italy, France and Croatia.</p><a href="/team">Team</a>`;
+    const italyHome = `<!doctype html><title>Italy Buyer</title><meta name="description" content="B2B software company based in Milan with a growing commercial team"><p>Office: +39 02 1234567</p><a href="/team">Team</a>`;
+    const genericTeam = `<section><p>Sales Director</p><p>Marco Bianchi</p><p>marco.bianchi@example.test</p></section>`;
+    const territoryFetcher = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === "https://replo.test") return new Response(product);
+      if (url.includes("bing.com/search") || url.includes("duckduckgo.com/html") || url.includes("search.yahoo.com")) return new Response(searchResults);
+      if (url.includes("/team")) return new Response(genericTeam.replace("example.test", new URL(url).hostname));
+      if (url.includes("global-sales.net")) return new Response(globalHome);
+      if (url.includes("croatia-sales.hr")) return new Response(croatiaHome);
+      if (url.includes("italy-buyer.com")) return new Response(italyHome);
+      return new Response("");
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", audience: "responsabili commerciali in aziende software B2B", territory: "Italia", limit: 3 }, territoryFetcher);
+
+    expect(result.prospects).toEqual([expect.objectContaining({ domain: "italy-buyer.com" })]);
+    expect(result.prospects).not.toEqual(expect.arrayContaining([expect.objectContaining({ domain: "global-sales.net" }), expect.objectContaining({ domain: "croatia-sales.hr" })]));
+  });
+
   it("rejects navigation or format labels that look like people", async () => {
     const recruitingHome = `<!doctype html><title>Recruiting Italia</title><meta name="description" content="Azienda B2B di recruiting con sede in Italia"><a href="/team">Team</a><section><p>Sales Talk</p><p>Sales recruitment specialists</p></section><section><p>Nicola Montanari</p><p>CEO di un'azienda cliente</p></section><section><p>Consulenza HR</p><p>Area Sales</p></section>`;
     const recruitingTeam = `<section><p>Founder</p><p>Elena Verdi</p><p>elena.verdi@recruiting.it</p></section>`;

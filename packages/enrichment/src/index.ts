@@ -164,7 +164,7 @@ function inferredBuyer(analysis: WebsiteAnalysis): BuyerIntent {
     searchIntent: "aziende B2B crescita espansione commerciale nuovi mercati",
     fitTerms: ["b2b", "crescita", "espansione", "commerciale", "export"],
     decisionMakers: "responsabili commerciali, business development e founder",
-    competitorSignals: ["lead generation", "generazione lead", "outbound platform", "piattaforma outbound", "sales automation", "automazione vendite", "sales intelligence", "prospecting platform", "piattaforma di prospecting", "cold email", "email outreach", "appointment setting", "presa appuntamenti", "database contatti", "trova contatti", "find prospects", "find leads", "agenzia commerciale", "agenzia marketing", "marketing agency", "web marketing", "marketing automation", "digital marketing", "sviluppo commerciale b2b", "sviluppo reti vendita", "sviluppo delle reti commerciali", "partner della tua rete vendita", "consulenza commerciale", "consulenza direzionale", "consulente marketing strategico", "marketing in affitto", "sales outsourcing", "outsourced sales", "fractional sales", "go-to-market consulting", "business development as a service", "servizi per l'export", "servizi di internazionalizzazione", "inserimento commerciale", "selezione buyer", "digital export marketing", "piano export", "export consulting", "consulenza export"],
+    competitorSignals: ["lead generation", "generazione lead", "outbound platform", "piattaforma outbound", "sales automation", "automazione vendite", "sales intelligence", "prospecting platform", "piattaforma di prospecting", "cold email", "email outreach", "appointment setting", "presa appuntamenti", "database contatti", "trova contatti", "find prospects", "find leads", "agenzia commerciale", "agenzia marketing", "marketing agency", "web marketing", "marketing automation", "digital marketing", "sviluppo commerciale b2b", "sviluppo reti vendita", "sviluppo delle reti commerciali", "partner della tua rete vendita", "consulenza commerciale", "consulenza direzionale", "consulente marketing strategico", "marketing in affitto", "sales outsourcing", "outsourced sales", "fractional sales", "go-to-market consulting", "business development as a service", "servizi per l'export", "servizi di internazionalizzazione", "inserimento commerciale", "selezione buyer", "digital export marketing", "piano export", "export consulting", "consulenza export", "sales training", "sales coaching", "sales enablement", "sales performance consulting", "sales excellence", "commercial excellence", "formazione vendite", "formazione commerciale", "training commerciale", "coaching commerciale"],
     searchAngles: ["azienda manifatturiera export mercati esteri", "software B2B team sales", "PMI innovativa espansione internazionale", "azienda industriale business development", "azienda tecnologica direzione commerciale"],
   };
   if (/e-?commerce|negozi|retail|shop/.test(context)) return {
@@ -239,9 +239,9 @@ function companyLooksLikeCompetitor(html: string, signals: string[]) {
   const haystack = normalizedText(textFromHtml(html).slice(0, 30_000));
   const matches = signals.filter((signal) => haystack.includes(normalizedText(signal)));
   if (matches.length >= 2) return true;
-  const vendorIdentity = /\b(agency|agenzia|boutique|consulting|consulenza|piattaforma|platform|service|servizi|software|solution|soluzione|tool|strumento)\b/.test(haystack);
+  const vendorIdentity = /\b(academy|agency|agenzia|boutique|coaching|consulting|consulenza|enablement|formazione|piattaforma|platform|service|servizi|software|solution|soluzione|tool|training|strumento)\b/.test(haystack);
   const supplierClaim = /\b(aiuta|aiutiamo|forniamo|la nostra piattaforma|offriamo|our platform|our service|servizi? di|software per|we help|we offer|we provide)\b/.test(haystack);
-  const serviceBusiness = /\b(agency|agenzi[a-z]*|boutique|consultant[a-z]*|consulent[a-z]*|consulting|consulenza|studio professionale)\b/.test(haystack);
+  const serviceBusiness = /\b(agency|agenzi[a-z]*|boutique|coaching company|consultant[a-z]*|consulent[a-z]*|consulting|consulenza|formazione professionale|sales academy|sales training|societa di formazione|studio professionale|training provider)\b/.test(haystack);
   const adjacentOfferCategories = [
     /\b(outbound|prospect|lead generation|appointment setting)\b/,
     /\b(marketing|comunicazione|communication)\b/,
@@ -249,6 +249,7 @@ function companyLooksLikeCompetitor(html: string, signals: string[]) {
     /\b(export|internazionalizz[a-z]*|mercati esteri)\b/,
     /\b(growth|go-to-market|crescita del fatturato)\b/,
     /\b(e-?commerce|seo|web marketing|siti web)\b/,
+    /\b(academy|coaching|enablement|formazione|training)\b/,
   ].filter((pattern) => pattern.test(haystack)).length;
   return (matches.length === 1 && vendorIdentity && supplierClaim) || (serviceBusiness && adjacentOfferCategories >= 2);
 }
@@ -258,19 +259,33 @@ function companyMatchesTerritory(url: string, html: string, territory: string) {
   if (!requested || /^(?:eu|europa|europe|european union|unione europea)$/.test(requested)) return true;
   const host = hostOf(url);
   const pageText = normalizedText(textFromHtml(html).slice(0, 20_000));
-  const profiles = [
-    { request: /\bdach\b/, domains: [".de", ".at", ".ch"], evidence: /\b(austria|deutschland|germany|osterreich|schweiz|switzerland|berlin|frankfurt|hamburg|munchen|munich|vienna|wien|zurich)\b/ },
-    { request: /\b(italia|italian|italy)\b/, domains: [".it"], evidence: /\b(italia|italian|italy|bologna|firenze|florence|milan|milano|napoli|rome|roma|torino|turin|venezia|venice)\b/ },
-    { request: /\b(deutschland|germania|germany)\b/, domains: [".de"], evidence: /\b(deutschland|germania|germany|berlin|frankfurt|hamburg|munchen|munich)\b/ },
-    { request: /\b(austria|osterreich)\b/, domains: [".at"], evidence: /\b(austria|osterreich|vienna|wien|graz|linz|salzburg)\b/ },
-    { request: /\b(schweiz|svizzera|switzerland)\b/, domains: [".ch"], evidence: /\b(schweiz|svizzera|switzerland|basel|bern|geneva|ginevra|lausanne|zurich)\b/ },
-    { request: /\b(france|francia|french)\b/, domains: [".fr"], evidence: /\b(france|francia|french|lille|lyon|marseille|nantes|paris|toulouse)\b/ },
-    { request: /\b(spagna|spain|spanish)\b/, domains: [".es"], evidence: /\b(barcelona|madrid|spagna|spain|spanish|valencia)\b/ },
-    { request: /\b(portogallo|portugal|portuguese)\b/, domains: [".pt"], evidence: /\b(lisbon|lisboa|porto|portogallo|portugal|portuguese)\b/ },
-    { request: /\b(benelux|belgio|belgium|netherlands|olanda|luxembourg|lussemburgo)\b/, domains: [".be", ".nl", ".lu"], evidence: /\b(amsterdam|belgio|belgium|brussels|bruxelles|luxembourg|lussemburgo|netherlands|olanda|rotterdam)\b/ },
+  const profiles: Array<{ request: RegExp; domains: string[]; places: string; demonyms: string; identityEvidence: RegExp[] }> = [
+    { request: /\bdach\b/, domains: [".de", ".at", ".ch"], places: "austria|deutschland|germany|osterreich|schweiz|switzerland|berlin|frankfurt|hamburg|munchen|munich|vienna|wien|zurich", demonyms: "austrian|german|swiss", identityEvidence: [/\+(?:41|43|49)\b/] },
+    { request: /\b(italia|italian|italy)\b/, domains: [".it"], places: "italia|italy|bologna|firenze|florence|milan|milano|napoli|rome|roma|torino|turin|venezia|venice", demonyms: "italian|italiana|italiane|italiani|italiano", identityEvidence: [/\+39\b/, /\b(?:codice fiscale|p iva|partita iva|registro imprese)\b/, /\bit\s?\d{11}\b/] },
+    { request: /\b(deutschland|germania|germany)\b/, domains: [".de"], places: "deutschland|germania|germany|berlin|frankfurt|hamburg|munchen|munich", demonyms: "deutsch|german|tedesca|tedesco", identityEvidence: [/\+49\b/] },
+    { request: /\b(austria|osterreich)\b/, domains: [".at"], places: "austria|osterreich|vienna|wien|graz|linz|salzburg", demonyms: "austrian|austriaca|austriaco", identityEvidence: [/\+43\b/] },
+    { request: /\b(schweiz|svizzera|switzerland)\b/, domains: [".ch"], places: "schweiz|svizzera|switzerland|basel|bern|geneva|ginevra|lausanne|zurich", demonyms: "swiss|svizzera|svizzero", identityEvidence: [/\+41\b/] },
+    { request: /\b(france|francia|french)\b/, domains: [".fr"], places: "france|francia|lille|lyon|marseille|nantes|paris|toulouse", demonyms: "francais|francaise|french", identityEvidence: [/\+33\b/, /\b(?:siren|siret)\b/] },
+    { request: /\b(spagna|spain|spanish)\b/, domains: [".es"], places: "barcelona|madrid|spagna|spain|valencia", demonyms: "espanol|spanish|spagnola|spagnolo", identityEvidence: [/\+34\b/] },
+    { request: /\b(portogallo|portugal|portuguese)\b/, domains: [".pt"], places: "lisbon|lisboa|porto|portogallo|portugal", demonyms: "portoghese|portuguese", identityEvidence: [/\+351\b/] },
+    { request: /\b(benelux|belgio|belgium|netherlands|olanda|luxembourg|lussemburgo)\b/, domains: [".be", ".nl", ".lu"], places: "amsterdam|belgio|belgium|brussels|bruxelles|luxembourg|lussemburgo|netherlands|olanda|rotterdam", demonyms: "belgian|belga|dutch|olandese|luxembourgish", identityEvidence: [/\+(?:31|32|352)\b/] },
   ];
   const profile = profiles.find((candidate) => candidate.request.test(requested));
-  if (profile) return profile.domains.some((suffix) => host.endsWith(suffix)) || profile.evidence.test(pageText);
+  if (profile) {
+    if (profile.domains.some((suffix) => host.endsWith(suffix))) return true;
+    const topLevelDomain = host.split(".").at(-1) ?? "";
+    const globallyUsedCountryCodeDomains = new Set(["ai", "cc", "co", "eu", "fm", "gg", "io", "ly", "me", "sh", "so", "to", "tv"]);
+    if (topLevelDomain.length === 2 && !globallyUsedCountryCodeDomains.has(topLevelDomain)) return false;
+    const places = `(?:${profile.places})`, entities = "(?:azienda|aziende|business|businesses|companies|company|manufacturer|manufacturers|piattaforma|piattaforme|platform|platforms|produttore|produttori|societa|team|teams)";
+    const operationalEvidence = [
+      new RegExp(`\\b(?:active|based|con sede|headquartered|headquarters|located|office|operating|presente|sede|ufficio|branch)\\s*(?:in|a|at|:|-)?\\s*${places}\\b`),
+      new RegExp(`\\b${entities}\\s+(?:(?:active|based|headquartered|located|operating)\\s+)?(?:in|a)\\s+${places}\\b`),
+      new RegExp(`\\b${places}\\s+(?:branch|headquarters|office|sede|team|ufficio)\\b`),
+      new RegExp(`\\b(?:${profile.demonyms})\\s+${entities}\\b`),
+      new RegExp(`\\b${entities}\\s+(?:${profile.demonyms})\\b`),
+    ];
+    return operationalEvidence.some((pattern) => pattern.test(pageText)) || profile.identityEvidence.some((pattern) => pattern.test(pageText));
+  }
   const terms = requested.match(/[a-z0-9][a-z0-9-]{2,}/g) ?? [];
   return terms.length > 0 && terms.every((term) => pageText.includes(term));
 }
