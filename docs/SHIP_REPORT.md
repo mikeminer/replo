@@ -37,6 +37,8 @@ False positives are deliberately rejected: generic mailboxes, role/navigation/de
 
 For every prospect, the web app now generates a complete visible draft: destination address, recipient name and company, subject, personalized body, sender name/signature and source evidence. Results are account-first: only the highest-ranked relevant decision-maker for each company is returned, and a short qualified company set is never padded with second or third people from those same accounts. The user can copy the entire email or open it via `mailto:` in the company's existing email client.
 
+Una demo interattiva pubblica è disponibile esclusivamente su `https://replo.it/app/campaigns/new` per chi non ha effettuato il login. Simula analisi, ricerca, verifica e preparazione delle email con tre aziende diverse e indirizzi riservati `.example`; non chiama l'API e non salva dati. La stessa route serve il builder reale agli utenti autenticati, mentre ogni altra pagina `/app` continua a richiedere l'accesso.
+
 The selected visual identity is live without redrawing the supplied artwork: `image (4).jpg` provides the light navigation mark, while `image (6).jpg` provides the dark app wordmark. Next.js metadata routes create a square 64×64 site icon and a 180×180 dark app/Apple icon with deterministic crops of those originals.
 
 ## Product decision: no platform sending
@@ -57,6 +59,7 @@ The research product remains free and does not sell reply unlocks or sending vol
 - Every prospect retains a public source link and confidence state.
 - `apps/web` reaches the backend through `@replo/sdk`, not API internals.
 - Old inbox and deliverability URLs redirect to the new research flow.
+- L'unica route applicativa anonima è il mock interattivo `/app/campaigns/new` sull'host esatto `replo.it`; preview, altri domini e tutte le altre route `/app` restano chiusi.
 
 Operational state is maintained in [OPS_STATE.md](./OPS_STATE.md).
 
@@ -64,7 +67,8 @@ Operational state is maintained in [OPS_STATE.md](./OPS_STATE.md).
 
 - Business deployment `dpl_99QGzGBqBEsc8agq7MQ3QdwoY9VN`: `READY`, aliased to `replo.eu`.
 - API deployment `dpl_DW3rc2jm7JSZCb3BtkbQH9cm859o`: `READY`, aliased to `api.replo.eu`.
-- Web deployment `dpl_4XB4c7Xwo8uyk1niBX4GSo9Yatcc`: `READY`, aliased to `replo.it`.
-- Automated gates: 37 tests, full TypeScript lint, no-finder guard, all workspace builds and smoke checks passed. Regression coverage includes API-key hashing/authorization, AES-256-GCM credential round trips and the existing discovery controls.
+- Web deployment `dpl_44JQi6TwvcAUaTARrsb5GSTbxn7b`: `READY`, aliased to `replo.it`.
+- Automated gates: 39 tests, full TypeScript lint, no-finder guard and the production web build passed. Regression coverage includes the strict public-demo host/route boundary, API-key hashing/authorization, AES-256-GCM credential round trips and the existing discovery controls.
+- Public-demo Chrome gate: an authenticated test session was closed, `/app/campaigns/new` loaded anonymously with HTTP 200, all four simulated stages completed, all three distinct example companies appeared, selecting FormaLab changed the recipient to `marco.desantis@formalab.example`, and the copy action confirmed the complete demo email. Anonymous `/app` and `/app/account` returned 307 to `/login`.
 - Chrome gate: the real production Italy search at limit 6 and without a buyer override scanned 36 official sites and returned two distinct company accounts, BISY and Globalsider, with one primary contact each and no duplicate account padding. The UI displayed “2 aziende compatibili” and the account-first policy. “Copia email completa” produced a 460-character payload containing `federico.stradi@bisy.it`, `Nome: Federico Stradi`, company, subject, `Ciao Federico`, sender `Michele` and signature `Fondatore · Replo`.
 - Production runtime gate: Vercel recorded HTTP 200 for the exercised API request and HTTP 200 for both exercised web requests. Build logs contain no errors and runtime error scans for both current deployments are empty.
