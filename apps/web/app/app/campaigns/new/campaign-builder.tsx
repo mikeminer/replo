@@ -121,7 +121,7 @@ export function CampaignBuilder() {
           <div className="row">
             <div>
               <div className="eyebrow">2 · Copia e invia dalla tua casella</div>
-              <h2>{state.discovery.prospects.length} email pronte</h2>
+              <h2>{state.discovery.prospects.length} aziende compatibili</h2>
             </div>
             <span className="badge">{state.discovery.sourcesScanned} siti aziendali analizzati</span>
           </div>
@@ -130,6 +130,7 @@ export function CampaignBuilder() {
             <span>{state.discovery.analysis.summary}</span>
             <small>Buyer cercato: {state.discovery.strategy.buyerProfile.target}</small>
             <small>Decision-maker: {state.discovery.strategy.buyerProfile.decisionMakers}</small>
+            <small>Copertura: una persona primaria per azienda, senza account duplicati.</small>
             <small>{state.discovery.strategy.competitorPolicy === "buyer_override" ? "Il target indicato include quel tipo di fornitore: la tua scelta ha la precedenza." : state.discovery.strategy.competitorPolicy === "exclude_competing_vendors" ? "Aziende concorrenti escluse automaticamente." : "Ricerca orientata ai potenziali clienti, non alle aziende simili al prodotto."}</small>
           </div>
           <div className="source-strategy">

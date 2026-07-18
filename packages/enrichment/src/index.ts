@@ -510,10 +510,25 @@ async function prospectsFromCompany(companyUrl: string, fetcher: typeof fetch, r
   return found.sort((left, right) => roleScore(right) * 4 + (right.verification === "valid" ? 2 : 0) - (roleScore(left) * 4 + (left.verification === "valid" ? 2 : 0)));
 }
 
+function prospectAccountKey(prospect: PublicProspect) {
+  return registrableHost(prospect.domain) || normalizedText(prospect.companyName) || prospect.domain;
+}
+
+function primaryProspectsByCompany(ranked: PublicProspect[], limit: number) {
+  const seenCompanies = new Set<string>(), selected: PublicProspect[] = [];
+  for (const prospect of ranked) {
+    const key = prospectAccountKey(prospect);
+    if (seenCompanies.has(key)) continue;
+    seenCompanies.add(key); selected.push(prospect);
+    if (selected.length >= limit) break;
+  }
+  return selected;
+}
+
 export async function discoverPublicProspects(input: { url: string; audience?: string; territory?: string; limit?: number }, fetcher: typeof fetch = fetch) {
   const limit = Math.min(Math.max(input.limit ?? 12, 1), 30);
-  const discoveryBudgetMs = Math.min(75_000, 44_000 + limit * 900);
-  const expansionLimit = Math.min(24, Math.max(12, limit));
+  const discoveryBudgetMs = Math.min(90_000, 62_000 + limit * 1_500);
+  const expansionLimit = Math.min(36, Math.max(24, limit * 2));
   const companyLimit = Math.min(54, Math.max(36, Math.ceil(limit * 2.5)));
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(new Error("Discovery time budget reached")), discoveryBudgetMs);
@@ -610,20 +625,17 @@ export async function discoverPublicProspects(input: { url: string; audience?: s
     }
     const prospects: PublicProspect[] = [];
     const rows: PromiseSettledResult<PublicProspect[]>[] = [], companyFetcher = timedFetcher(12_000);
+    const desiredCompanyPool = Math.min(companyUrls.length, Math.max(limit, Math.ceil(limit * 1.5)));
     for (let start = 0; start < companyUrls.length && !controller.signal.aborted; start += 8) {
       const batchRows = await Promise.allSettled(companyUrls.slice(start, start + 8).map((url) => prospectsFromCompany(url, companyFetcher, relevanceTerms, preferredRoles, territory, competitorSignals, hasRequestedCompanyTerms ? 2 : 1)));
       rows.push(...batchRows);
       for (const row of batchRows) if (row.status === "fulfilled") for (const prospect of row.value) if (!prospects.some((candidate) => candidate.email === prospect.email)) prospects.push(prospect);
-      if (prospects.length >= limit) break;
+      if (new Set(prospects.map(prospectAccountKey)).size >= desiredCompanyPool) break;
     }
     const roleScore = (prospect: PublicProspect) => preferredRoles.filter((term) => normalizedText(prospect.role ?? "").includes(term)).length;
-    const rankedAll = prospects.sort((left, right) => roleScore(right) * 4 + (right.verification === "valid" ? 2 : 0) - (roleScore(left) * 4 + (left.verification === "valid" ? 2 : 0)));
+    const rankedAll = [...prospects].sort((left, right) => roleScore(right) * 4 + (right.verification === "valid" ? 2 : 0) - (roleScore(left) * 4 + (left.verification === "valid" ? 2 : 0)));
     const roleMatched = rankedAll.filter((prospect) => roleScore(prospect) > 0), ranked = roleMatched.length ? roleMatched : rankedAll;
-    const diversified: PublicProspect[] = [];
-    for (let companyQuota = 1; companyQuota <= 3 && diversified.length < limit; companyQuota += 1) for (const prospect of ranked) {
-      if (diversified.includes(prospect) || diversified.filter((candidate) => candidate.domain === prospect.domain).length >= companyQuota) continue;
-      diversified.push(prospect); if (diversified.length >= limit) break;
-    }
+    const diversified = primaryProspectsByCompany(ranked, limit);
     return {
       analysis,
       query,

@@ -382,6 +382,49 @@ describe("public-web discovery", () => {
     expect(result.sourcesScanned).toBeGreaterThan(18);
   });
 
+  it("keeps searching for distinct companies when an early company exposes several contacts", async () => {
+    const emptyCompanies = Array.from({ length: 7 }, (_, index) => `<li class="b_algo"><a href="https://empty-${index + 1}.it/">Empty ${index + 1}</a></li>`).join("");
+    const searchResults = `<li class="b_algo"><a href="https://alpha.it/">Alpha</a></li>${emptyCompanies}<li class="b_algo"><a href="https://beta.it/">Beta</a></li><li class="b_algo"><a href="https://gamma.it/">Gamma</a></li>`;
+    const companyHome = (name: string) => `<!doctype html><title>${name}</title><meta name="description" content="Piattaforma software B2B con sede in Italia"><a href="/team">Team</a>`;
+    const diversityFetcher = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === "https://replo.test") return new Response(product);
+      if (url.includes("bing.com/search")) return new Response(searchResults);
+      if (url.includes("duckduckgo.com/html") || url.includes("search.yahoo.com")) return new Response("");
+      if (url === "https://alpha.it/team") return new Response(`<section><p>Sales Director</p><p>Ada Alpha</p><p>ada.alpha@alpha.it</p></section><section><p>Business Development Manager</p><p>Anna Alpha</p><p>anna.alpha@alpha.it</p></section><section><p>CEO</p><p>Aldo Alpha</p><p>aldo.alpha@alpha.it</p></section>`);
+      if (url === "https://beta.it/team") return new Response(`<section><p>Sales Director</p><p>Bruno Beta</p><p>bruno.beta@beta.it</p></section>`);
+      if (url === "https://gamma.it/team") return new Response(`<section><p>Founder</p><p>Giulia Gamma</p><p>giulia.gamma@gamma.it</p></section>`);
+      if (url.startsWith("https://alpha.it")) return new Response(companyHome("Alpha"));
+      if (url.startsWith("https://beta.it")) return new Response(companyHome("Beta"));
+      if (url.startsWith("https://gamma.it")) return new Response(companyHome("Gamma"));
+      if (/https:\/\/empty-\d+\.it/.test(url)) return new Response(companyHome("Empty"));
+      return new Response("");
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", audience: "responsabili commerciali software B2B", territory: "Italia", limit: 3 }, diversityFetcher);
+
+    expect(result.prospects).toHaveLength(3);
+    expect(result.prospects.map((prospect) => prospect.domain)).toEqual(["alpha.it", "beta.it", "gamma.it"]);
+    expect(new Set(result.prospects.map((prospect) => prospect.domain)).size).toBe(3);
+    expect(result.sourcesScanned).toBe(10);
+  });
+
+  it("returns one primary decision-maker instead of padding results with the same company", async () => {
+    const oneCompanyFetcher = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === "https://replo.test") return new Response(product);
+      if (url.includes("bing.com/search")) return new Response(`<li class="b_algo"><a href="https://alpha.it/">Alpha</a></li>`);
+      if (url.includes("duckduckgo.com/html") || url.includes("search.yahoo.com")) return new Response("");
+      if (url === "https://alpha.it/team") return new Response(`<section><p>Sales Director</p><p>Ada Alpha</p><p>ada.alpha@alpha.it</p></section><section><p>Business Development Manager</p><p>Anna Alpha</p><p>anna.alpha@alpha.it</p></section><section><p>CEO</p><p>Aldo Alpha</p><p>aldo.alpha@alpha.it</p></section>`);
+      if (url.startsWith("https://alpha.it")) return new Response(`<!doctype html><title>Alpha</title><meta name="description" content="Piattaforma software B2B con sede in Italia"><a href="/team">Team</a>`);
+      return new Response("");
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", audience: "responsabili commerciali software B2B", territory: "Italia", limit: 3 }, oneCompanyFetcher);
+
+    expect(result.prospects).toEqual([expect.objectContaining({ firstName: "Ada", domain: "alpha.it" })]);
+  });
+
   it("prioritizes a late official team result over broad company homepages", async () => {
     const broadLinks = Array.from({ length: 42 }, (_, index) => `<li class="b_algo"><a href="https://broad-${index + 1}.it/">Broad ${index + 1}</a></li>`).join("");
     const priorityFetcher = (async (input: string | URL | Request) => {
