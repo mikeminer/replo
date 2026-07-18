@@ -5,6 +5,7 @@ import { z } from "zod";
 import { analyzeWebsite, discoverPublicProspects, generateCandidates } from "../../../packages/enrichment/src/index.js";
 import { createSender, normalizeSmartleadEvent, type SenderPort } from "../../../packages/sending/src/index.js";
 import { LIMITS, redactReply } from "../../../packages/shared/src/index.js";
+import { ApiQuotaExceededError, createAccountDirectory, type AccountDirectory } from "./account-directory.js";
 import { MemoryStore, type Campaign, type Org } from "./store.js";
 
 type Vars = { org: Org };
@@ -13,13 +14,15 @@ const ownedSchema = z.object({ firstName: z.string().min(1), lastName: z.string(
 const campaignSchema = z.object({ name: z.string().min(1), sequence: z.array(z.object({ subject: z.string().min(1), body: z.string().min(1), delayDays: z.number().int().nonnegative() })).min(1).optional() });
 class ApiFailure extends Error { constructor(readonly status: number, readonly code: string, message: string) { super(message); } }
 
-export function createApp(options: { store?: MemoryStore; sender?: SenderPort; fetcher?: typeof fetch } = {}) {
+export function createApp(options: { store?: MemoryStore; sender?: SenderPort; fetcher?: typeof fetch; accountDirectory?: AccountDirectory } = {}) {
   const store = options.store ?? new MemoryStore(), sender = options.sender ?? createSender(), fetcher = options.fetcher ?? fetch;
-  const app = new Hono<{ Variables: Vars }>(); app.use("*", cors({ origin: process.env.WEB_BASE_URL ?? "http://localhost:3000" }));
+  const accountDirectory = options.accountDirectory ?? createAccountDirectory(store);
+  const allowedOrigins = [process.env.WEB_BASE_URL ?? "http://localhost:3000", process.env.BUSINESS_BASE_URL ?? "http://localhost:3001"];
+  const app = new Hono<{ Variables: Vars }>(); app.use("*", cors({ origin: (origin) => allowedOrigins.includes(origin) ? origin : allowedOrigins[0] }));
   app.get("/health", async (c) => c.json({ ok: true, sender: await sender.health() }));
   app.get("/v1/openapi.json", (c) => c.json(openapi));
   app.post("/v1/internal/bootstrap", async (c) => { if ((process.env.INTERNAL_SECRET ?? "change-me") !== c.req.header("x-internal-secret")) return jsonError(c, 401, "unauthorized", "Invalid internal secret"); const body = await c.req.json().catch(() => ({})) as { name?: string; plan?: "free" | "pro" }; return c.json(store.bootstrap(body.name, body.plan)); });
-  app.use("/v1/*", async (c, next) => { if (c.req.path === "/v1/prospects/discover" || c.req.path.startsWith("/v1/webhooks/") || c.req.path.startsWith("/v1/internal/")) return next(); const auth = c.req.header("authorization")?.replace(/^Bearer\s+/i, "") ?? ""; const org = store.orgForKey(auth); if (!org) return jsonError(c, 401, "invalid_api_key", "A valid Replo API key is required"); c.set("org", org); await next(); });
+  app.use("/v1/*", async (c, next) => { if (c.req.path.startsWith("/v1/webhooks/") || c.req.path.startsWith("/v1/internal/")) return next(); const auth = c.req.header("authorization")?.replace(/^Bearer\s+/i, "") ?? ""; let access; try { access = await accountDirectory.authorize(auth, c.req.path, c.req.method); } catch (error) { if (error instanceof ApiQuotaExceededError) return jsonError(c, 429, "api_quota_exceeded", "Monthly API quota exceeded"); throw error; } if (!access) return jsonError(c, 401, "invalid_api_key", "A valid, active Replo API key is required"); if (access.remaining !== null) c.header("x-ratelimit-remaining", String(access.remaining)); c.set("org", access.org); await next(); });
   app.get("/v1/me", (c) => c.json({ organization: c.get("org") }));
   app.post("/v1/research/from-url", async (c) => { const org = c.get("org"), body = z.object({ url: z.string().url() }).parse(await c.req.json()); const product = await analyzeWebsite(body.url, fetcher); const result = { product, icp: [{ title: product.keywords.slice(0, 3).join(" · ") || "B2B teams", description: `Organizations whose public positioning overlaps with ${product.summary.slice(0, 140)}` }], angles: [{ title: `Why ${product.name}`, body: product.summary }] }; return c.json({ jobId: store.createJob(org.id, "research", result).id }); });
   app.get("/v1/prospects/discover", async (c) => { const input = z.object({ url: z.string().url(), audience: z.string().max(180).optional(), territory: z.string().max(80).optional(), limit: z.coerce.number().int().min(1).max(30).optional() }).parse(c.req.query()); return c.json(await discoverPublicProspects({ url: input.url!, audience: input.audience, territory: input.territory, limit: input.limit }, fetcher)); });

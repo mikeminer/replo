@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.25.0",
   "scripts": {
     "build": "pnpm -r build",
-    "dev": "pnpm --parallel --filter @replo/api --filter @replo/web dev",
+    "dev": "pnpm --parallel --filter @replo/api --filter @replo/web --filter @replo/business dev",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "smoke": "node --use-system-ca --import tsx scripts/smoke.ts",
