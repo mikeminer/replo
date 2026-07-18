@@ -2,6 +2,7 @@ import { maskedApiKey } from "../../lib/api-keys";
 import { getSupabaseAdmin } from "../../lib/supabase/admin";
 import { requireBusinessContext } from "../../lib/supabase/membership";
 import { DashboardActions } from "./dashboard-actions";
+import { PLAN_DETAILS } from "../../lib/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,8 @@ export default async function DashboardPage() {
     admin.from("api_keys").select("id, name, prefix, last_four, last_used_at, created_at, revoked_at").eq("organization_id", organization.id).is("revoked_at", null).order("created_at", { ascending: false }),
     admin.from("usage_events").select("id", { count: "exact", head: true }).eq("organization_id", organization.id).gte("created_at", monthStart),
   ]);
+  const plan = PLAN_DETAILS[organization.plan];
+  const usageLabel = plan.monthlyApiCalls === null ? `${usage ?? 0} · ∞` : `${usage ?? 0} / ${plan.monthlyApiCalls}`;
 
   return <>
     <header className="shell nav">
@@ -31,20 +34,20 @@ export default async function DashboardPage() {
     <main className="shell dashboard">
       <div className="dashboard-head">
         <div><div className="eyebrow">Workspace API</div><h1>{organization.name}</h1><p className="muted">{organizations.length} organizzazion{organizations.length === 1 ? "e" : "i"} associate all&apos;account.</p></div>
-        <DashboardActions plan={organization.plan} hasCustomer={Boolean(organization.stripe_customer_id)} />
+        <DashboardActions plan={organization.plan} hasCustomer={Boolean(organization.stripe_customer_id)} activeKeyCount={keys?.length ?? 0} />
       </div>
       <section className="stats">
-        <article className="card stat"><span className="muted">Piano</span><strong>{organization.plan === "pro" ? "API Pro" : "Free"}</strong></article>
-        <article className="card stat"><span className="muted">Chiamate questo mese</span><strong>{usage ?? 0}</strong></article>
+        <article className="card stat"><span className="muted">Piano</span><strong>{plan.label}</strong></article>
+        <article className="card stat"><span className="muted">Chiamate questo mese</span><strong>{usageLabel}</strong></article>
         <article className="card stat"><span className="muted">Chiavi attive</span><strong>{keys?.length ?? 0}</strong></article>
       </section>
       <section className="two">
         <article className="card">
           <div className="eyebrow">API key</div><h2>Chiavi attive</h2>
-          {organization.plan !== "pro" && <p className="notice">L&apos;abbonamento API Pro abilita la creazione di chiavi live.</p>}
+          {organization.plan === "free" && <p className="notice">Scegli Startup, Partner o Enterprise per generare una chiave API live.</p>}
           {keys?.length ? keys.map((key) => <div className="key-row" key={key.id}>
             <div><strong>{key.name}</strong><div className="key">{maskedApiKey(key.prefix, key.last_four)}</div><small className="muted">Ultimo uso: {key.last_used_at ? new Date(key.last_used_at).toLocaleString("it-IT") : "mai"}</small></div>
-            <DashboardActions compact keyId={key.id} plan={organization.plan} hasCustomer={Boolean(organization.stripe_customer_id)} />
+            <DashboardActions compact keyId={key.id} plan={organization.plan} hasCustomer={Boolean(organization.stripe_customer_id)} activeKeyCount={keys.length} />
           </div>) : <p className="muted">Nessuna chiave attiva.</p>}
         </article>
         <article className="card stack">

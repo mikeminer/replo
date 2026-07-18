@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 
 type Props = { configured: boolean; maskedKey?: string; organizationName?: string; plan?: string };
+const planLabel = (plan?: string) => ({ startup: "Startup", partner: "Partner", enterprise: "Enterprise", free: "Testing" })[plan ?? ""] ?? "Testing";
 
 export function CredentialForm({ configured, maskedKey, organizationName, plan }: Props) {
   const [message, setMessage] = useState("");
@@ -32,7 +33,7 @@ export function CredentialForm({ configured, maskedKey, organizationName, plan }
   return <div className="credential-stack">
     {configured && <div className="saved-credential">
       <div><div className="eyebrow">Chiave attiva</div><strong className="credential-mask">{maskedKey}</strong></div>
-      <div><strong>{organizationName}</strong><div className="muted">Piano {plan === "pro" ? "API Pro" : "Free"}</div></div>
+      <div><strong>{organizationName}</strong><div className="muted">Piano {planLabel(plan)}</div></div>
     </div>}
     <form className="account-form" onSubmit={save}>
       <label>{configured ? "Sostituisci la chiave" : "Inserisci la tua API key"}<input required name="apiKey" type="password" autoComplete="off" placeholder="rk_…" /></label>

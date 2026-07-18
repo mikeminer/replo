@@ -1,5 +1,5 @@
 import type Stripe from "stripe";
-import { getStripe, isPaidSubscriptionStatus } from "../../../../lib/stripe";
+import { getStripe, planForSubscription } from "../../../../lib/stripe";
 import { getSupabaseAdmin } from "../../../../lib/supabase/admin";
 
 export async function POST(request: Request) {
@@ -14,9 +14,9 @@ export async function POST(request: Request) {
   if (event.type.startsWith("customer.subscription.")) {
     const subscription = event.data.object as Stripe.Subscription, organizationId = subscription.metadata.organizationId;
     if (organizationId) {
-      const paid = isPaidSubscriptionStatus(subscription.status);
-      await admin.from("organizations").update({ plan: paid ? "pro" : "free", stripe_customer_id: String(subscription.customer), stripe_subscription_id: subscription.id }).eq("id", organizationId);
-      await admin.from("subscriptions").upsert({ organization_id: organizationId, provider_id: subscription.id, status: subscription.status, current_period_end: new Date(subscription.items.data[0]?.current_period_end ? subscription.items.data[0].current_period_end * 1000 : Date.now()).toISOString() }, { onConflict: "provider_id" });
+      const plan = planForSubscription(subscription);
+      await admin.from("organizations").update({ plan, stripe_customer_id: String(subscription.customer), stripe_subscription_id: subscription.id }).eq("id", organizationId);
+      await admin.from("subscriptions").upsert({ organization_id: organizationId, provider_id: subscription.id, plan, status: subscription.status, current_period_end: new Date(subscription.items.data[0]?.current_period_end ? subscription.items.data[0].current_period_end * 1000 : Date.now()).toISOString() }, { onConflict: "provider_id" });
     }
   }
   await admin.from("webhook_events").insert({ provider: "stripe", external_id: event.id, type: event.type });

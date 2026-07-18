@@ -1,0 +1,13 @@
+.pricing-lead { max-width: 780px; }
+.sandbox-notice { margin: 26px 0; }
+.feature-list { display: grid; gap: 10px; margin: 0; padding-left: 20px; }
+.pricing-plans { margin-top: 28px; }
+.plan-actions { justify-items: end; }
+.plan-actions input { min-width: 230px; background: #08171b; border: 1px solid var(--line); border-radius: 11px; padding: 12px; color: var(--text); }
+.key-reveal { max-width: 620px; }
+.price small { font-size: 15px; font-weight: 500; margin-left: 6px; }
+
+@media (max-width: 760px) {
+  .plan-actions { justify-items: stretch; }
+  .plan-actions input { min-width: 0; width: 100%; }
+}

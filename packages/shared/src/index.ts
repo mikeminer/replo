@@ -1,7 +1,8 @@
 import { z } from "zod";
 
-export const PLANS = ["free", "pro"] as const;
+export const PLANS = ["free", "startup", "partner", "enterprise"] as const;
 export type Plan = (typeof PLANS)[number];
+export const isPaidPlan = (plan: Plan) => plan !== "free";
 export const SEND_PROVIDERS = ["mock", "smartlead", "instantly"] as const;
 export type SendProvider = (typeof SEND_PROVIDERS)[number];
 export const LIMITS = {
@@ -14,5 +15,5 @@ export const LIMITS = {
 export const emailSchema = z.string().email();
 export type ApiError = { error: { code: string; message: string } };
 export function redactReply<T extends { bodyText: string; fromEmail: string; fromName?: string | null }>(reply: T, plan: Plan) {
-  return plan === "pro" ? { ...reply, locked: false } : { ...reply, bodyText: "", fromEmail: "", fromName: null, locked: true };
+  return isPaidPlan(plan) ? { ...reply, locked: false } : { ...reply, bodyText: "", fromEmail: "", fromName: null, locked: true };
 }

@@ -27,7 +27,7 @@ type AuthorizationRow = {
   organization_plan: Plan;
   monthly_send_count: number;
   monthly_resolve_count: number;
-  remaining: number;
+  remaining: number | null;
 };
 
 export class SupabaseAccountDirectory implements AccountDirectory {

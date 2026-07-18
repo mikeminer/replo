@@ -25,7 +25,7 @@ Enable warmup before production campaigns. Use at least two active mailboxes and
 3. Register the public HTTPS callback ending `/v1/webhooks/esp/smartlead?secret=<secret>` for sent, reply, bounce, unsubscribe, and campaign status events.
 4. Set the same secret and mailbox IDs in production environment variables.
 5. Run `pnpm smoke:live` with only the operator-owned `LIVE_TEST_LEAD_EMAIL`.
-6. Confirm delivery in the owned inbox, reply, confirm webhook ingestion, Free redaction, and Pro unlock.
+6. Confirm delivery in the owned inbox, reply, confirm webhook ingestion, Testing redaction, and paid-plan unlock.
 7. Record identifiers and timestamps—never secrets—in `OPS_STATE.md`.
 
 ## Incident response

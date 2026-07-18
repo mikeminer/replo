@@ -2,21 +2,21 @@
 
 ## Replo Business e monetizzazione API — 2026-07-18
 
-`https://replo.eu` è ora il portale business di Replo. Supporta registrazione e login Supabase, organizzazioni multi-account, selettore workspace, piano Free/Pro, Stripe Checkout, Billing Portal e gestione autonoma delle chiavi API per `https://api.replo.eu`.
+`https://replo.eu` è il portale API SaaS di Replo. Supporta registrazione e login Supabase, organizzazioni multi-account, selettore workspace, Stripe Checkout, Billing Portal e gestione autonoma delle chiavi API per `https://api.replo.eu`. Il listino pubblico è ora Startup (€7,90/mese), Partner (€49,90/mese) ed Enterprise (€247,90/mese); lo stato gratuito interno è mostrato come `Testing` e non può emettere chiavi.
 
 `https://replo.it` usa lo stesso progetto Supabase Auth: l'utente accede con la stessa identità di `replo.eu` e tutta l'area applicativa è protetta. In `Account e API` può incollare una chiave generata sul portale business, farla verificare in tempo reale, salvarla, sostituirla o rimuoverla. La chiave è cifrata a riposo con AES-256-GCM e non viene mai restituita al browser dopo il salvataggio; l'interfaccia mostra soltanto una forma mascherata, organizzazione e piano.
 
-Le chiavi emesse da `replo.eu` vengono mostrate una sola volta, salvate esclusivamente come hash SHA-256 e possono essere revocate dal cliente con effetto immediato. L'autorizzazione risolve organizzazione, membership, piano e quota tramite una funzione Supabase; ogni richiesta valida viene contabilizzata. Free dispone della quota base, mentre Pro porta la quota mensile a 10.000 chiamate. `replo.it` non contiene credenziali nel client: il suo route handler autenticato usa prima la chiave personale cifrata e, se assente, la chiave dedicata dell'organizzazione `Replo App`.
+Le chiavi emesse da `replo.eu` vengono mostrate una sola volta, salvate esclusivamente come hash SHA-256 e possono essere revocate dal cliente con effetto immediato. Startup applica 300 chiamate mensili e una sola chiave; Partner una chiave e chiamate illimitate; Enterprise chiamate e chiavi illimitate con etichette personalizzate. I limiti sono applicati dentro Supabase con lock transazionale, quindi resistono anche a richieste simultanee. `replo.it` non contiene credenziali nel client: il suo route handler autenticato usa prima la chiave personale cifrata e, se assente, la chiave dedicata dell'organizzazione `Replo App`.
 
-Il flusso reale verificato in Chrome è stato: creazione utente → login → workspace Free → Checkout Stripe sandbox → webhook firmato → workspace Pro → generazione chiave → chiamata API `200` → contatore aggiornato → revoca → stessa chiave rifiutata con `401 invalid_api_key`. Un secondo test ha creato un'identità Supabase condivisa, eseguito il login su `replo.it`, salvato una chiave valida e ricaricato la pagina mostrando la credenziale mascherata `Replo App · API Pro`.
+La migrazione live ha convertito il precedente piano Pro in Partner senza perdere l'accesso. Chrome ha verificato il workspace Partner con una chiave attiva, quota `∞` e limite di una chiave. Un test E2E separato ha creato un workspace Startup temporaneo, chiamato l'API pubblica con una chiave reale, ottenuto `200`, piano `startup` e quota residua `299`, quindi eliminato le fixture. La creazione dei tre nuovi prodotti/prezzi Stripe sandbox attende soltanto il codice 2FA richiesto da Stripe; nessuna credenziale o valore fittizio è stato lasciato in Vercel.
 
 Deploy di produzione:
 
-- Business `dpl_99QGzGBqBEsc8agq7MQ3QdwoY9VN` → `replo.eu`
-- API `dpl_DW3rc2jm7JSZCb3BtkbQH9cm859o` → `api.replo.eu`
-- Web `dpl_4XB4c7Xwo8uyk1niBX4GSo9Yatcc` → `replo.it`
+- Business `dpl_HvmSNJi4MHSbk2v2Y9ZFKkThYeGA` → `replo.eu`
+- API `dpl_BAtqckR5w2mRGWsdqREV6xp5VgrE` → `api.replo.eu`
+- Web `dpl_6yNWfKwyi7H6SEqnu389MCvDMHgS` → `replo.it`
 
-Tutti i deploy sono `READY`. Sono passati 37 test automatici, lint completo del monorepo, guardia anti-email-finder e build di business/API/web. Non sono presenti segreti in repository o documentazione. I soli limiti esterni rimasti — Stripe live e secondo progetto Supabase — sono documentati in [BLOCKERS.md](./BLOCKERS.md).
+Tutti i deploy sono `READY`. Sono passati 42 test automatici, lint completo del monorepo, guardia anti-email-finder e build di business/API/web. Non sono presenti segreti in repository o documentazione. I soli limiti esterni rimasti sono documentati in [BLOCKERS.md](./BLOCKERS.md).
 
 ## Outcome
 
@@ -45,7 +45,7 @@ The selected visual identity is live without redrawing the supplied artwork: `im
 
 Campaign launch, managed mailbox status, reply locking, inbox and deliverability controls have been removed from the user-facing web product. Historical Smartlead/provider code remains isolated in the backend but is dormant and is no longer a Day-1 dependency. The current workflow requires no ESP key, warmup, DKIM/tracking record, reply webhook or test send.
 
-The research product remains free and does not sell reply unlocks or sending volume. API access is monetized separately through Replo Business: API Pro is purchasable in Stripe sandbox today, while real charging waits only for Stripe live-account activation.
+The research product does not sell reply unlocks or sending volume. API access is monetized separately through Replo Business with Startup, Partner and Enterprise entitlements; real charging remains disabled while Stripe stays in sandbox.
 
 ## Acceptance gates
 
@@ -65,10 +65,10 @@ Operational state is maintained in [OPS_STATE.md](./OPS_STATE.md).
 
 ## Production verification
 
-- Business deployment `dpl_99QGzGBqBEsc8agq7MQ3QdwoY9VN`: `READY`, aliased to `replo.eu`.
-- API deployment `dpl_DW3rc2jm7JSZCb3BtkbQH9cm859o`: `READY`, aliased to `api.replo.eu`.
-- Web deployment `dpl_4f8to2STU8xqtd2SxMPdmsSZF6Y1`: `READY`, aliased to `replo.it`.
-- Automated gates: 39 tests, full TypeScript lint, no-finder guard and the production web build passed. Regression coverage includes the strict public-demo host/route boundary, API-key hashing/authorization, AES-256-GCM credential round trips and the existing discovery controls.
+- Business deployment `dpl_HvmSNJi4MHSbk2v2Y9ZFKkThYeGA`: `READY`, aliased to `replo.eu`.
+- API deployment `dpl_BAtqckR5w2mRGWsdqREV6xp5VgrE`: `READY`, aliased to `api.replo.eu`.
+- Web deployment `dpl_6yNWfKwyi7H6SEqnu389MCvDMHgS`: `READY`, aliased to `replo.it`.
+- Automated gates: 42 tests, full TypeScript lint, no-finder guard and production builds passed. Regression coverage includes all three entitlement configurations, Stripe price mapping, the strict public-demo host/route boundary, API-key hashing/authorization, AES-256-GCM credential round trips and the existing discovery controls.
 - Public-demo Chrome gate: an authenticated test session was closed, `/app/campaigns/new` loaded anonymously with HTTP 200, all four simulated stages completed, all three distinct example companies appeared, selecting FormaLab changed the recipient to `marco.desantis@formalab.example`, and the copy action confirmed the complete demo email. Anonymous `/app` and `/app/account` returned 307 to `/login`.
 - Chrome gate: the real production Italy search at limit 6 and without a buyer override scanned 36 official sites and returned two distinct company accounts, BISY and Globalsider, with one primary contact each and no duplicate account padding. The UI displayed “2 aziende compatibili” and the account-first policy. “Copia email completa” produced a 460-character payload containing `federico.stradi@bisy.it`, `Nome: Federico Stradi`, company, subject, `Ciao Federico`, sender `Michele` and signature `Fondatore · Replo`.
 - Production runtime gate: Vercel recorded HTTP 200 for the exercised API request and HTTP 200 for both exercised web requests. Build logs contain no errors and runtime error scans for both current deployments are empty.

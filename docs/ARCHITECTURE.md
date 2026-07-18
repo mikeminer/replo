@@ -4,4 +4,4 @@
 
 The enrichment package uses seed addresses, public page extraction, deterministic patterns, DNS/MX inspection, and conservative confidence. The sending package exposes `SenderPort`, with Smartlead as the production implementation and an in-memory fake for CI.
 
-Smartlead events are normalized, de-duplicated, and mapped to sends, replies, bounces, and unsubscribes. Full reply data is always stored server-side. The API projects a redacted DTO for Free tenants and a complete DTO for Pro tenants.
+Smartlead events are normalized, de-duplicated, and mapped to sends, replies, bounces, and unsubscribes. Full reply data is always stored server-side. The dormant legacy API projects a redacted DTO for Testing tenants and a complete DTO for paid Startup, Partner and Enterprise tenants.

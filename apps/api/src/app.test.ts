@@ -3,7 +3,7 @@ import { MockSender } from "@replo/sending";
 import { createApp } from "./app.js";
 describe("Replo API", () => {
   beforeEach(() => { process.env.INTERNAL_SECRET = "test"; process.env.SEND_PROVIDER = "mock"; process.env.ALLOW_DEV_ROUTES = "true"; process.env.BILLING_MOCK = "true"; });
-  it("redacts free replies and unlocks Pro", async () => {
+  it("redacts testing replies and unlocks a paid tier", async () => {
     const { app } = createApp({ sender: new MockSender() });
     const bootResponse = await app.request("/v1/internal/bootstrap", { method: "POST", headers: { "x-internal-secret": "test", "content-type": "application/json" }, body: "{}" });
     const boot = await bootResponse.json() as any;
