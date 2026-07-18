@@ -183,6 +183,23 @@ describe("public-web discovery", () => {
     expect(result.prospects).toEqual([]);
   });
 
+  it("rejects a commercial department title formatted like a person", async () => {
+    const departmentHome = `<!doctype html><title>GSG Ceramic Design</title><meta name="description" content="Azienda B2B manifatturiera italiana con crescita commerciale"><a href="/azienda/">Azienda</a>`;
+    const departmentPage = `<section><p>General Manager</p><p>Direttore Commerciale Italia</p><p>direttore.commercialeitalia@ceramicagsg.it</p></section>`;
+    const departmentFetcher = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === "https://replo.test") return new Response(product);
+      if (url.includes("bing.com/search") || url.includes("duckduckgo.com/html") || url.includes("search.yahoo.com")) return new Response(`<li class="b_algo"><a href="https://ceramicagsg.it/azienda/">GSG Ceramic Design</a></li>`);
+      if (url.includes("ceramicagsg.it/azienda")) return new Response(departmentPage);
+      if (url.includes("ceramicagsg.it")) return new Response(departmentHome);
+      return new Response("");
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", territory: "Italia", limit: 3 }, departmentFetcher);
+
+    expect(result.prospects).toEqual([]);
+  });
+
   it("extracts named decision makers from an official team card and prioritizes the requested role", async () => {
     const smartCompany = `<!doctype html><title>Sydus</title><meta name="description" content="B2B software and SaaS cloud platform in Italy"><a href="/chi-siamo">Chi siamo</a>`;
     const visibleTeam = `<section><div><p>Founder-ready toolkit</p></div><div><p>Operator advantage</p></div></section><section><p>Co-Founder &amp; CEO</p><p>Professional experience</p></section><section><p>Operations Strategy</p><p>Market Strategy</p></section><section><p>UX Researcher</p><p>Lead Designer &amp; Founder</p></section><section><div><p>Head Developer</p></div><div><p>Giovanni Verdi</p></div></section><section><div><p>HR Specialist</p></div><div><p>Alba Bianchi</p></div></section><section><div><p>Sales Director</p></div><div><p>Alberto Gengaro</p></div></section>`;
