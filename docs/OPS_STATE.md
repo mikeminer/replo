@@ -5,6 +5,7 @@ Updated: 2026-07-18 Europe/Rome
 - Product mode: research + copy-ready email; in-platform sending has been removed from the user-facing workflow
 - Web: `https://replo.it` — Next.js, API access only through `@replo/sdk`
 - API: `https://api.replo.eu` — Hono; `/health` and OpenAPI available
+- Business: `https://replo.eu` — login Supabase, organizzazioni multi-account, abbonamento Stripe e gestione delle chiavi API SaaS
 - Autonomous GTM: `/app/campaigns/new`; product URL → site analysis → public-web discovery → official company/team/contact sources → one complete personalized email per prospect
 - Smart discovery: customer-side buyer inferred from the product when omitted; the engine separates the seller's offer from buyer-company traits, decision-maker roles and demand triggers. Territory and buyer intent select a visible channel plan. Europages covers EU discovery; WLW and XING company pages reinforce DACH; Netcomm, ICE and Unioncamere reinforce Italy; Viadeo company pages reinforce France; EU-Startups, Startup Europe, Codemotion and Developers Italia support startup/tech discovery when relevant
 - Source hierarchy: marketplaces, networks, communities and institutional registers are discovery bridges only. Names and addresses are accepted only from the prospect's official company/team/contact pages. Osservatori.net and curated Italian tech-community maps are context/taxonomy inputs and never contact sources
@@ -14,15 +15,19 @@ Updated: 2026-07-18 Europe/Rome
 - Draft output: recipient address/name/company, subject, personalized body, sender name/signature, source link, complete-copy action and `mailto:` handoff
 - Brand assets: `image (4).jpg` is preserved as the light navigation mark; `image (6).jpg` is preserved as the dark app wordmark. Next.js generates a 64×64 site icon from the light mark and a clean 180×180 Apple/app icon from the dark mark
 - Email execution: user's existing business mailbox; Replo neither sends nor requires ESP credentials, mailbox warmup, reply webhooks or provider DNS
-- Discovery transport: browser uses `@replo/sdk` over the same-origin Vercel rewrite to `api.replo.eu`
+- Shared account: `replo.it` and `replo.eu` use the same Supabase Auth project and the same user identities. The application area on `replo.it` requires login and exposes an Italian `Account e API` section
+- Saved user API key: an authenticated user can paste a key generated on `replo.eu`; `replo.it` verifies it against `/v1/me`, stores it with AES-256-GCM encryption and shows only prefix/last four, organization and plan. The user can replace or remove it
+- Discovery transport: browser uses `@replo/sdk` through a same-origin authenticated server route. The route prefers the user's encrypted saved key and falls back to the internal `Replo App` workspace key; no SaaS key is exposed to the browser
 - Discovery provenance: publicly visible emails are labeled `pubblicata`; owned-domain patterns remain labeled `da verificare`
-- Pricing: Free is usable now; Pro is visibly “in arrivo” and cannot be purchased, preventing payment for unimplemented research/team features
+- API pricing: Free is usable with a monthly quota; API Pro is €49/month in Stripe sandbox and unlocks key generation plus a 10,000-call monthly quota. Live charging remains blocked until Stripe live mode is activated
 - Legacy provider code: retained server-side but dormant and absent from navigation/product flows
 - Active sending provider: none. `/health` reports the dormant backend mock adapter, but the production research/copy workflow neither sends email nor calls Smartlead/Instantly
-- Domains: `replo.it` and `api.replo.eu`; Vercel ownership verified; authoritative DNS at Register.it
+- SaaS authorization: API keys use an `rk_` prefix, are revealed once, stored only as SHA-256 hashes, scoped to an organization, metered per month and rejected immediately after revocation
+- Stripe lifecycle: Checkout, Billing Portal route and signed subscription webhooks are implemented. `customer.subscription.created`, `updated` and `deleted` update the organization entitlement idempotently
+- Supabase: project `Replo Business` (`rlxhqzowfslkipfenqbe`) in Europe; RLS, memberships, subscriptions, usage events and webhook deduplication are active. `replo.it` currently uses a dedicated organization inside this project because the free-plan project limit blocks a second Supabase project
+- Domains: `replo.eu`, `replo.it` and `api.replo.eu`; Vercel ownership verified; authoritative DNS at Register.it. The apex `replo.eu` A record is `216.198.79.1` and HTTPS is active
 - Mail DNS: existing Register.it MX/SPF preserved; no product operation requires further mail DNS changes
 - Secrets: no plaintext credentials are recorded in this file
-- Production deployments: API `dpl_HinCv3vSx7xHdYXnswQbC22L2yVu`; web `dpl_6xqjwexXJXn3rFhG1Nr9iDDqLgL5`; both `READY` with aliases `api.replo.eu` and `replo.it`. Build logs contain no errors
-- Verification: 30 automated tests passed, including account-first search continuation, strict one-primary-contact-per-company output, buyer-side GTM inference, software/service/sales-training competitor rejection, strong territory evidence, explicit buyer override, testimonial ownership, departmental-mailbox and false-label controls; monorepo lint, no-finder guard, build and smoke passed. Chrome exercised the real production flow with `https://replo.it`, no buyer override, Italy and limit 6: the UI inferred growing/expanding B2B companies and commercial leaders, scanned 36 official sites and returned BISY plus Globalsider as two distinct companies with no account duplication. The complete-copy payload contained destination, recipient full name, company, subject, personalized salutation, sender name and `Fondatore · Replo` signature. Vercel recorded HTTP 200 for the exercised API and web deployments and no runtime errors
-
-No `BLOCKERS.md` exists because the current product can be delivered without a payment method or third-party ESP account.
+- Production deployments: business `dpl_99QGzGBqBEsc8agq7MQ3QdwoY9VN`; API `dpl_DW3rc2jm7JSZCb3BtkbQH9cm859o`; web `dpl_4XB4c7Xwo8uyk1niBX4GSo9Yatcc`. All are `READY` and aliased respectively to `replo.eu`, `api.replo.eu` and `replo.it`
+- Verification: 37 automated tests, full monorepo lint, no-finder guard and all three production builds passed. Chrome completed signup/login, organization creation, Stripe sandbox Checkout, signed webhook upgrade to Pro, API-key creation, authenticated API use, usage metering and revocation. It then created a fresh shared Supabase identity, logged into `replo.it`, opened `Account e API`, verified a valid Replo key, saved it encrypted and reloaded the masked `Replo App · API Pro` credential. The previously tested revoked key returned `401 invalid_api_key`
+- Payment/project blockers are recorded in [BLOCKERS.md](./BLOCKERS.md)

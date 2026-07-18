@@ -1,5 +1,23 @@
 # SHIP REPORT
 
+## Replo Business e monetizzazione API — 2026-07-18
+
+`https://replo.eu` è ora il portale business di Replo. Supporta registrazione e login Supabase, organizzazioni multi-account, selettore workspace, piano Free/Pro, Stripe Checkout, Billing Portal e gestione autonoma delle chiavi API per `https://api.replo.eu`.
+
+`https://replo.it` usa lo stesso progetto Supabase Auth: l'utente accede con la stessa identità di `replo.eu` e tutta l'area applicativa è protetta. In `Account e API` può incollare una chiave generata sul portale business, farla verificare in tempo reale, salvarla, sostituirla o rimuoverla. La chiave è cifrata a riposo con AES-256-GCM e non viene mai restituita al browser dopo il salvataggio; l'interfaccia mostra soltanto una forma mascherata, organizzazione e piano.
+
+Le chiavi emesse da `replo.eu` vengono mostrate una sola volta, salvate esclusivamente come hash SHA-256 e possono essere revocate dal cliente con effetto immediato. L'autorizzazione risolve organizzazione, membership, piano e quota tramite una funzione Supabase; ogni richiesta valida viene contabilizzata. Free dispone della quota base, mentre Pro porta la quota mensile a 10.000 chiamate. `replo.it` non contiene credenziali nel client: il suo route handler autenticato usa prima la chiave personale cifrata e, se assente, la chiave dedicata dell'organizzazione `Replo App`.
+
+Il flusso reale verificato in Chrome è stato: creazione utente → login → workspace Free → Checkout Stripe sandbox → webhook firmato → workspace Pro → generazione chiave → chiamata API `200` → contatore aggiornato → revoca → stessa chiave rifiutata con `401 invalid_api_key`. Un secondo test ha creato un'identità Supabase condivisa, eseguito il login su `replo.it`, salvato una chiave valida e ricaricato la pagina mostrando la credenziale mascherata `Replo App · API Pro`.
+
+Deploy di produzione:
+
+- Business `dpl_99QGzGBqBEsc8agq7MQ3QdwoY9VN` → `replo.eu`
+- API `dpl_DW3rc2jm7JSZCb3BtkbQH9cm859o` → `api.replo.eu`
+- Web `dpl_4XB4c7Xwo8uyk1niBX4GSo9Yatcc` → `replo.it`
+
+Tutti i deploy sono `READY`. Sono passati 37 test automatici, lint completo del monorepo, guardia anti-email-finder e build di business/API/web. Non sono presenti segreti in repository o documentazione. I soli limiti esterni rimasti — Stripe live e secondo progetto Supabase — sono documentati in [BLOCKERS.md](./BLOCKERS.md).
+
 ## Outcome
 
 Replo is a site-to-prospect research and email-composition product:
@@ -25,7 +43,7 @@ The selected visual identity is live without redrawing the supplied artwork: `im
 
 Campaign launch, managed mailbox status, reply locking, inbox and deliverability controls have been removed from the user-facing web product. Historical Smartlead/provider code remains isolated in the backend but is dormant and is no longer a Day-1 dependency. The current workflow requires no ESP key, warmup, DKIM/tracking record, reply webhook or test send.
 
-Pricing no longer sells reply unlocks or sending volume. Free exposes the current workflow; Pro is explicitly labeled “in arrivo” and has no checkout until its research/team features exist.
+The research product remains free and does not sell reply unlocks or sending volume. API access is monetized separately through Replo Business: API Pro is purchasable in Stripe sandbox today, while real charging waits only for Stripe live-account activation.
 
 ## Acceptance gates
 
@@ -44,8 +62,9 @@ Operational state is maintained in [OPS_STATE.md](./OPS_STATE.md).
 
 ## Production verification
 
-- API deployment `dpl_HinCv3vSx7xHdYXnswQbC22L2yVu`: `READY`, aliased to `api.replo.eu`.
-- Web deployment `dpl_6xqjwexXJXn3rFhG1Nr9iDDqLgL5`: `READY`, aliased to `replo.it`.
-- Automated gates: 30 tests, full TypeScript lint, no-finder guard, all workspace builds and smoke checks passed. Regression coverage proves that discovery continues past an early company exposing several contacts, returns only one primary decision-maker per company, rejects software, consulting and sales-training/coaching competitors, requires strong territory evidence, rejects department labels and honors an explicit buyer override.
+- Business deployment `dpl_99QGzGBqBEsc8agq7MQ3QdwoY9VN`: `READY`, aliased to `replo.eu`.
+- API deployment `dpl_DW3rc2jm7JSZCb3BtkbQH9cm859o`: `READY`, aliased to `api.replo.eu`.
+- Web deployment `dpl_4XB4c7Xwo8uyk1niBX4GSo9Yatcc`: `READY`, aliased to `replo.it`.
+- Automated gates: 37 tests, full TypeScript lint, no-finder guard, all workspace builds and smoke checks passed. Regression coverage includes API-key hashing/authorization, AES-256-GCM credential round trips and the existing discovery controls.
 - Chrome gate: the real production Italy search at limit 6 and without a buyer override scanned 36 official sites and returned two distinct company accounts, BISY and Globalsider, with one primary contact each and no duplicate account padding. The UI displayed “2 aziende compatibili” and the account-first policy. “Copia email completa” produced a 460-character payload containing `federico.stradi@bisy.it`, `Nome: Federico Stradi`, company, subject, `Ciao Federico`, sender `Michele` and signature `Fondatore · Replo`.
 - Production runtime gate: Vercel recorded HTTP 200 for the exercised API request and HTTP 200 for both exercised web requests. Build logs contain no errors and runtime error scans for both current deployments are empty.

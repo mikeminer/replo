@@ -171,10 +171,10 @@ begin
 
   select * into matched_organization from public.organizations where id = matched_key.organization_id;
   monthly_limit := case when matched_organization.plan = 'pro' then 10000 else 100 end;
-  select coalesce(sum(units), 0)::integer into used_units
-  from public.usage_events
-  where organization_id = matched_organization.id
-    and created_at >= date_trunc('month', now());
+  select coalesce(sum(usage_row.units), 0)::integer into used_units
+  from public.usage_events as usage_row
+  where usage_row.organization_id = matched_organization.id
+    and usage_row.created_at >= date_trunc('month', now());
 
   if used_units >= monthly_limit then
     raise exception using errcode = 'P0001', message = 'api_quota_exceeded';
@@ -197,3 +197,7 @@ $$;
 revoke all on function public.authorize_api_key(text, text, text) from public, anon, authenticated;
 grant execute on function public.authorize_api_key(text, text, text) to service_role;
 
+grant usage on schema public to authenticated, service_role;
+grant select on public.profiles, public.organizations, public.memberships, public.api_keys, public.subscriptions, public.usage_events to authenticated;
+grant select, insert, update, delete on public.profiles, public.organizations, public.memberships, public.api_keys, public.subscriptions, public.usage_events, public.webhook_events to service_role;
+grant usage, select on all sequences in schema public to service_role;

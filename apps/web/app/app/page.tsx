@@ -5,6 +5,7 @@ export default function App() {
         <b>Area di lavoro</b>
         <a href="/app">Panoramica</a>
         <a href="/app/campaigns/new">Nuova ricerca</a>
+        <a href="/app/account">Account e API</a>
         <a href="/pricing">Piani</a>
       </aside>
       <section>

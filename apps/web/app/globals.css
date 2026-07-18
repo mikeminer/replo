@@ -40,6 +40,10 @@ label { font-weight: 700; font-size: 14px; }
 .app-brandbar > span { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #b5ceca; }
 .app-wordmark { display: block; width: 190px; flex: none; }
 .app-wordmark img { display: block; width: 100%; height: auto; }
+.app-account-nav { display: flex; align-items: center; gap: 14px; color: #b5ceca; font-size: 12px; font-weight: 700; }
+.app-account-nav a { color: #dffefa; text-decoration: underline; text-underline-offset: 3px; }
+.app-account-nav form { margin: 0; }
+.app-account-nav button { border: 1px solid #34514f; border-radius: 999px; padding: 7px 11px; background: transparent; color: #dffefa; cursor: pointer; }
 .side { display: flex; flex-direction: column; gap: 10px; }
 .side a { padding: 10px; border-radius: 8px; }
 .side a:hover { background: #e9ebdf; }
@@ -83,6 +87,17 @@ label { font-weight: 700; font-size: 14px; }
 .pricing-hero { grid-template-columns: 1fr; padding-bottom: 32px; }
 .pricing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 800px; }
 .future-plan { background: #f1f1e9; }
+.login-page { width: min(500px, 100%); margin: 64px auto; }
+.login-card h1 { font-size: 48px; letter-spacing: -2px; }
+.account-form { display: grid; gap: 12px; margin-top: 22px; }
+.account-form label { display: grid; gap: 2px; }
+.account-form .btn { width: 100%; }
+.account-page h2 { font-size: 34px; margin-bottom: 8px; }
+.credential-card { margin-top: 24px; max-width: 720px; }
+.credential-stack { margin-top: 20px; }
+.saved-credential { display: flex; justify-content: space-between; gap: 20px; align-items: center; border: 1px solid #9bc6a7; background: #eaf6e9; border-radius: 12px; padding: 16px; }
+.credential-mask { display: block; margin-top: 5px; font-family: "SFMono-Regular", Consolas, monospace; overflow-wrap: anywhere; }
+.credential-actions { display: flex; gap: 10px; }
 
 @media (max-width: 800px) {
   .hero, .grid, .dash, .form-grid, .sender-grid, .pricing-grid { grid-template-columns: 1fr; }
@@ -90,10 +105,13 @@ label { font-weight: 700; font-size: 14px; }
   .navlinks { display: none; }
   .app-brandbar { min-height: 74px; padding: 0 14px; }
   .app-brandbar > span { display: none; }
+  .app-account-nav > span { display: none; }
+  .app-account-nav { gap: 8px; }
   .app-wordmark { width: 156px; }
   .dash { padding-top: 24px; }
   .side { flex-direction: row; flex-wrap: wrap; align-items: center; }
   .email-draft-head, .row { align-items: flex-start; }
   .email-fields > div { grid-template-columns: 68px 1fr; }
   .source-link { margin-left: 0; width: 100%; }
+  .saved-credential { align-items: flex-start; flex-direction: column; }
 }

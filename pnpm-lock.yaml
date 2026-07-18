@@ -110,6 +110,12 @@ importers:
       '@replo/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
+      '@supabase/ssr':
+        specifier: ^0.6.1
+        version: 0.6.1(@supabase/supabase-js@2.110.7)
+      '@supabase/supabase-js':
+        specifier: ^2.53.0
+        version: 2.110.7
       next:
         specifier: ^15.4.0
         version: 15.5.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)

@@ -17,7 +17,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <span>Replo</span>
             </a>
             <div className="navlinks"><a href="/#product">Come funziona</a><a href="/pricing">Piani</a><a href="/app">Apri app</a></div>
-            <a className="btn" href="/app/campaigns/new">Inizia gratis</a>
+            <a className="btn" href="/login">Accedi</a>
           </nav>
           {children}
         </div>
