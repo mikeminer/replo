@@ -273,7 +273,8 @@ function companyMatchesTerritory(url: string, html: string, territory: string) {
   const profile = profiles.find((candidate) => candidate.request.test(requested));
   if (profile) {
     if (profile.domains.some((suffix) => host.endsWith(suffix))) return true;
-    const topLevelDomain = host.split(".").at(-1) ?? "";
+    const hostParts = host.split(".");
+    const topLevelDomain = hostParts[hostParts.length - 1] ?? "";
     const globallyUsedCountryCodeDomains = new Set(["ai", "cc", "co", "eu", "fm", "gg", "io", "ly", "me", "sh", "so", "to", "tv"]);
     if (topLevelDomain.length === 2 && !globallyUsedCountryCodeDomains.has(topLevelDomain)) return false;
     const places = `(?:${profile.places})`, entities = "(?:azienda|aziende|business|businesses|companies|company|manufacturer|manufacturers|piattaforma|piattaforme|platform|platforms|produttore|produttori|societa|team|teams)";
