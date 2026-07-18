@@ -1,6 +1,18 @@
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { createSupabaseServerClient } from "../../../../lib/supabase/server";
 import { CampaignBuilder } from "./campaign-builder";
+import { MockCampaignBuilder } from "./mock-campaign-builder";
 
-export default function NewCampaign() {
+export default async function NewCampaign() {
+  const [supabase, requestHeaders] = await Promise.all([
+    createSupabaseServerClient(),
+    headers(),
+  ]);
+  const { data: { user } } = await supabase.auth.getUser();
+  const publicDemo = requestHeaders.get("x-replo-public-demo") === "1";
+  if (!user && !publicDemo) redirect("/login");
+
   return (
     <main className="dash">
       <aside className="side">
@@ -15,7 +27,7 @@ export default function NewCampaign() {
         <div className="eyebrow">Acquisizione commerciale assistita</div>
         <h1 className="page-title">Dal tuo sito a email già pronte.</h1>
         <p className="lead compact">Replo trova i contatti. Tu mantieni il controllo dell&apos;invio dalla casella che la tua azienda usa già.</p>
-        <CampaignBuilder />
+        {user ? <CampaignBuilder /> : <MockCampaignBuilder />}
       </section>
     </main>
   );
