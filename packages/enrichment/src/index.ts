@@ -27,7 +27,13 @@ export function generateCandidates(seed: PersonSeed): Candidate[] {
 }
 
 export function extractEmails(html: string, domain?: string): Candidate[] {
-  const matches = html.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [];
+  const visible = decodeVisibleText(textFromHtml(html));
+  const deobfuscated = visible
+    .replace(/\s*(?:\[|\()(?:at|chiocciola)(?:\]|\))\s*/gi, "@")
+    .replace(/\s+(?:at|chiocciola)\s+(?=[a-z0-9-]+(?:\s*(?:\[|\()?(?:dot|punto)(?:\]|\))?\s*|\.))/gi, "@")
+    .replace(/\s*(?:\[|\()(?:dot|punto)(?:\]|\))\s*/gi, ".")
+    .replace(/\s+(?:dot|punto)\s+/gi, ".");
+  const matches = `${html}\n${deobfuscated}`.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [];
   return [...new Set(matches.map((email) => email.toLowerCase()))]
     .filter((email) => !domain || email.endsWith(`@${domain}`))
     .map((email) => ({ email, confidence: 0.96, source: "page", verification: "valid" }));
@@ -82,6 +88,10 @@ function meta(html: string, key: string) {
 function titleCase(value: string) { return value.split(/[._\-\s]+/).filter(Boolean).map((x) => x[0]?.toUpperCase() + x.slice(1).toLowerCase()).join(" "); }
 function hostOf(value: string) { try { return new URL(value).hostname.toLowerCase().replace(/^www\./, ""); } catch { return ""; } }
 function registrableHost(host: string) { const parts = host.split("."); return parts.slice(-2).join("."); }
+function sameCompanyHost(left: string, right: string) {
+  const leftHost = hostOf(left), rightHost = hostOf(right);
+  return Boolean(leftHost && rightHost && (leftHost === rightHost || leftHost.endsWith(`.${rightHost}`) || rightHost.endsWith(`.${leftHost}`)));
+}
 async function fetchHtml(url: string, fetcher: typeof fetch) {
   const target = new URL(url), host = target.hostname.toLowerCase();
   const privateIpv4 = /^(?:127\.|10\.|192\.168\.|169\.254\.|172\.(?:1[6-9]|2\d|3[01])\.)/.test(host);
@@ -377,16 +387,79 @@ function companyIdentityPage(value: string) {
     return segments.some((segment) => /^(?:about|about-us|azienda|chi-siamo|company|contact|contacts|contatti|direzione|fondatori|founders|leadership|management|our-team|people|persone|squadra|staff|team|who-we-are)$/.test(segment));
   } catch { return false; }
 }
+const identityPathHint = /(?:^|[-_/])(?:about(?:-us)?|azienda|board|chi-siamo|company|contact(?:-us)?|contacts|contatti|direction|direzione|equipe|executive|fondatori|founders?|governance|leadership|management|our-team|people|persone|squadra|staff|team|uber-uns|ueber-uns|who-we-are)(?:$|[-_/])/i;
+const identityLabelHint = /\b(?:about(?: us)?|azienda|board|chi siamo|company|contact(?: us)?|contatti|direction|direzione|equipe|executive|fondatori|founders?|governance|leadership|management|our team|people|persone|squadra|staff|team|uber uns|ueber uns|who we are)\b/i;
+const crawlAssetPattern = /\.(?:avif|bmp|css|docx?|eot|gif|ico|jpe?g|js|json|mp3|mp4|pdf|png|svg|tiff?|ttf|webm|webp|woff2?|xlsx?|zip)$/i;
+
+function companyPageScore(value: string, label = "") {
+  try {
+    const url = new URL(value), path = decodeURIComponent(url.pathname).toLowerCase(), normalizedLabel = normalizedText(label);
+    if (crawlAssetPattern.test(path) || /(?:^|\/)(?:blog|careers?|cookie|events?|legal|news|press|privacy|products?|servizi|services?|shop)(?:\/|$)/i.test(path)) return -1;
+    let score = identityPathHint.test(path) ? 100 : 0;
+    if (identityLabelHint.test(normalizedLabel)) score += 80;
+    if (/\b(?:commercial|sales|business development|revenue|marketing|founder|ceo|direttore|responsabile)\b/i.test(normalizedLabel)) score += 35;
+    const depth = path.split("/").filter(Boolean).length;
+    return score > 0 && depth <= 5 ? score - depth : -1;
+  } catch { return -1; }
+}
+
 function publicPageLinks(html: string, base: string) {
-  const links: string[] = [];
+  const links = new Map<string, number>();
   for (const match of html.matchAll(/<a[^>]+href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)) try {
     const url = new URL(decodeHtml(match[1]), base);
-    const label = normalizedText(textFromHtml(match[2])).trim(), segments = url.pathname.toLowerCase().split("/").filter(Boolean);
-    const pageHint = /^(?:about|about-us|azienda|chi-siamo|company|contact|contacts|contatti|direzione|fondatori|founders|leadership|management|our-team|people|persone|squadra|staff|team|who-we-are)$/;
-    const labelHint = /^(?:about(?: us)?|azienda|chi siamo|company|contact(?: us)?|contatti|direzione|fondatori|founders|leadership|management|our team|people|persone|squadra|staff|team|who we are)$/;
-    if (hostOf(url.href) === hostOf(base) && (segments.some((segment) => pageHint.test(segment)) || labelHint.test(label))) links.push(url.href);
+    url.hash = "";
+    const score = companyPageScore(url.href, textFromHtml(match[2]));
+    if (/^https?:$/.test(url.protocol) && sameCompanyHost(url.href, base) && score >= 0) links.set(url.href, Math.max(score, links.get(url.href) ?? -1));
   } catch { /* Ignore malformed links. */ }
-  return [...new Set(links)].slice(0, 5);
+  return [...links.entries()].sort((left, right) => right[1] - left[1]).map(([url]) => url);
+}
+
+function sitemapLocations(xml: string, base: string) {
+  const pageUrls: string[] = [], sitemapUrls: string[] = [];
+  for (const match of xml.matchAll(/<loc(?:\s[^>]*)?>([\s\S]*?)<\/loc>/gi)) try {
+    const url = new URL(decodeHtml(match[1].trim()), base); url.hash = "";
+    if (!sameCompanyHost(url.href, base)) continue;
+    if (/\.xml(?:\.gz)?$/i.test(url.pathname)) sitemapUrls.push(url.href);
+    else if (companyPageScore(url.href) >= 0) pageUrls.push(url.href);
+  } catch { /* Ignore malformed sitemap locations. */ }
+  return { pageUrls: [...new Set(pageUrls)], sitemapUrls: [...new Set(sitemapUrls)] };
+}
+
+async function companyIdentityPages(home: { url: string; html: string }, companyUrl: string, fetcher: typeof fetch) {
+  const pageLimit = 12, pages = new Map<string, { url: string; html: string }>([[home.url, home]]), candidates = new Map<string, number>();
+  const addCandidate = (url: string, score: number) => {
+    try {
+      const target = new URL(url); target.hash = "";
+      if (!/^https?:$/.test(target.protocol) || !sameCompanyHost(target.href, home.url) || pages.has(target.href)) return;
+      candidates.set(target.href, Math.max(score, candidates.get(target.href) ?? -1));
+    } catch { /* Ignore malformed crawl candidates. */ }
+  };
+  if (new URL(companyUrl).pathname !== "/") addCandidate(companyUrl, 160);
+  publicPageLinks(home.html, home.url).forEach((url, index) => addCandidate(url, 140 - index));
+  ["/about", "/about-us", "/azienda", "/chi-siamo", "/team", "/management", "/leadership", "/contatti"].forEach((path, index) => addCandidate(new URL(path, home.url).href, 70 - index));
+
+  const sitemapRoots = [new URL("/sitemap.xml", home.url).href, new URL("/wp-sitemap.xml", home.url).href];
+  const sitemapRows = await Promise.allSettled(sitemapRoots.map((url) => fetchHtml(url, fetcher)));
+  const nestedSitemaps: string[] = [];
+  for (const row of sitemapRows) if (row.status === "fulfilled") {
+    const locations = sitemapLocations(row.value.html, row.value.url);
+    locations.pageUrls.forEach((url, index) => addCandidate(url, 130 - index));
+    nestedSitemaps.push(...locations.sitemapUrls.filter((url) => /(?:page|main|sitemap)/i.test(url)).slice(0, 3));
+  }
+  const nestedRows = await Promise.allSettled([...new Set(nestedSitemaps)].slice(0, 3).map((url) => fetchHtml(url, fetcher)));
+  for (const row of nestedRows) if (row.status === "fulfilled") sitemapLocations(row.value.html, row.value.url).pageUrls.forEach((url, index) => addCandidate(url, 125 - index));
+
+  for (let depth = 0; depth < 2 && pages.size < pageLimit; depth += 1) {
+    const batch = [...candidates.entries()].filter(([url]) => !pages.has(url)).sort((left, right) => right[1] - left[1]).slice(0, pageLimit - pages.size);
+    if (!batch.length) break;
+    batch.forEach(([url]) => candidates.delete(url));
+    const rows = await Promise.allSettled(batch.map(([url]) => fetchHtml(url, fetcher)));
+    for (const row of rows) if (row.status === "fulfilled" && !pages.has(row.value.url)) {
+      pages.set(row.value.url, row.value);
+      if (depth === 0) publicPageLinks(row.value.html, row.value.url).forEach((url, index) => addCandidate(url, 120 - index));
+    }
+  }
+  return [...pages.values()];
 }
 function peopleFromJsonLd(html: string) {
   const people: Array<{ firstName: string; lastName: string; role?: string }> = [];
@@ -472,11 +545,7 @@ async function prospectsFromCompany(companyUrl: string, fetcher: typeof fetch, r
   const companyDocument = `${homeAnalysis.title} ${homeAnalysis.summary} ${home.html}`;
   if (looksLikePublisherOrDirectory(homeAnalysis, home.html) || companyLooksLikeCompetitor(companyDocument, competitorSignals) || !companyMatchesTerritory(home.url, companyDocument, territory) || !companyMatchesAudience(companyDocument, relevanceTerms, minimumAudienceMatches)) return [];
   const titleName = homeAnalysis.title.split(/[|–—-]/)[0]?.trim(), companyName = /^(?:brainpress|wordpress)$/i.test(homeAnalysis.name) || homeAnalysis.name.length > 60 ? (titleName.length <= 60 ? titleName : titleCase(domain.split(".")[0])) : homeAnalysis.name;
-  const linkedPages = publicPageLinks(home.html, home.url);
-  const commonPages = linkedPages.length >= 3 ? [] : ["/about", "/team", "/chi-siamo", "/contatti"].map((path) => new URL(path, home.url).href);
-  const pageUrls = [...new Set([...(target.pathname !== "/" ? [companyUrl] : []), ...linkedPages, ...commonPages])].filter((url) => url !== home.url).slice(0, 5);
-  const fetched = await Promise.allSettled(pageUrls.map((url) => fetchHtml(url, fetcher)));
-  const pages = [{ url: home.url, html: home.html }, ...fetched.filter((row): row is PromiseFulfilledResult<{ url: string; html: string }> => row.status === "fulfilled").map((row) => row.value)];
+  const pages = await companyIdentityPages(home, companyUrl, fetcher);
   const found: PublicProspect[] = [], seen = new Set<string>();
   for (const page of pages) {
     if (page.url !== home.url && page.html === home.html) continue;

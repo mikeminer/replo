@@ -425,6 +425,41 @@ describe("public-web discovery", () => {
     expect(result.prospects).toEqual([expect.objectContaining({ firstName: "Ada", domain: "alpha.it" })]);
   });
 
+  it("crawls a second identity-page level to find a decision maker hidden below the company page", async () => {
+    const deepFetcher = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === "https://replo.test") return new Response(product);
+      if (url.includes("bing.com/search")) return new Response(`<li class="b_algo"><a href="https://deep-buyer.it/">Deep Buyer</a></li>`);
+      if (url.includes("duckduckgo.com/html") || url.includes("search.yahoo.com")) return new Response("");
+      if (url === "https://deep-buyer.it") return new Response(`<!doctype html><title>Deep Buyer</title><meta name="description" content="Azienda software B2B con sede a Milano, Italia"><a href="/azienda">Azienda</a>`);
+      if (url === "https://deep-buyer.it/azienda") return new Response(`<a href="/azienda/leadership/commerciale">Direzione commerciale</a>`);
+      if (url === "https://deep-buyer.it/azienda/leadership/commerciale") return new Response(`<section><p>Direttore Commerciale</p><p>Laura Bianchi</p><p>laura.bianchi [at] deep-buyer [dot] it</p></section>`);
+      return new Response("", { status: 404 });
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", audience: "responsabili commerciali software B2B", territory: "Italia", limit: 3 }, deepFetcher);
+
+    expect(result.prospects[0]).toMatchObject({ firstName: "Laura", lastName: "Bianchi", email: "laura.bianchi@deep-buyer.it", verification: "valid", sourceUrl: "https://deep-buyer.it/azienda/leadership/commerciale" });
+  });
+
+  it("uses sitemap indexes as an official-site contact discovery surface", async () => {
+    const sitemapFetcher = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === "https://replo.test") return new Response(product);
+      if (url.includes("bing.com/search")) return new Response(`<li class="b_algo"><a href="https://sitemap-buyer.it/">Sitemap Buyer</a></li>`);
+      if (url.includes("duckduckgo.com/html") || url.includes("search.yahoo.com")) return new Response("");
+      if (url === "https://sitemap-buyer.it") return new Response(`<!doctype html><title>Sitemap Buyer</title><meta name="description" content="Azienda software B2B con sede a Roma, Italia">`);
+      if (url === "https://sitemap-buyer.it/sitemap.xml") return new Response(`<sitemapindex><sitemap><loc>https://sitemap-buyer.it/page-sitemap.xml</loc></sitemap></sitemapindex>`);
+      if (url === "https://sitemap-buyer.it/page-sitemap.xml") return new Response(`<urlset><url><loc>https://sitemap-buyer.it/company/management</loc></url></urlset>`);
+      if (url === "https://sitemap-buyer.it/company/management") return new Response(`<script type="application/ld+json">{"@type":"Person","name":"Marco Verdi","jobTitle":"Sales Director"}</script><p>marco.verdi@sitemap-buyer.it</p>`);
+      return new Response("", { status: 404 });
+    }) as typeof fetch;
+
+    const result = await discoverPublicProspects({ url: "https://replo.test", audience: "responsabili commerciali software B2B", territory: "Italia", limit: 3 }, sitemapFetcher);
+
+    expect(result.prospects[0]).toMatchObject({ firstName: "Marco", lastName: "Verdi", email: "marco.verdi@sitemap-buyer.it", verification: "valid", sourceUrl: "https://sitemap-buyer.it/company/management" });
+  });
+
   it("prioritizes a late official team result over broad company homepages", async () => {
     const broadLinks = Array.from({ length: 42 }, (_, index) => `<li class="b_algo"><a href="https://broad-${index + 1}.it/">Broad ${index + 1}</a></li>`).join("");
     const priorityFetcher = (async (input: string | URL | Request) => {

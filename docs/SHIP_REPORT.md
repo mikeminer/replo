@@ -1,5 +1,13 @@
 # SHIP REPORT
 
+## Motore di ricerca profondo sui siti ufficiali — 2026-07-30
+
+Il motore non incorpora il binario storico ht://Dig: il progetto ufficiale lo descrive come indicizzatore per un singolo dominio/intranet e la sua ultima release pubblicata risale al 2004, quindi non è adatto al runtime serverless moderno né alla scoperta dell'intero web. Replo implementa direttamente l'idea utile: per ogni azienda qualificata costruisce un indice temporaneo e limitato del solo sito ufficiale.
+
+La scansione ora legge `sitemap.xml`, `wp-sitemap.xml` e fino a tre sitemap annidate; assegna priorità a pagine multilingue team, management, leadership, direzione, governance, contatti e chi-siamo; segue un secondo livello di link ufficiali; e analizza fino a 12 pagine per azienda. Il crawler non esce dal dominio o dai suoi sottodomini, ignora asset e sezioni editoriali/commerciali non pertinenti e continua a restituire una sola persona primaria per società. Le email pubblicate con forme comuni come `[at]`, `[dot]`, `chiocciola` e `punto` vengono normalizzate solo se appartengono al dominio ufficiale. Nessun finder email esterno è stato aggiunto.
+
+La regressione completa è verde: 44 test, lint TypeScript di tutto il monorepo, guardia anti-finder e build production. I nuovi test coprono una persona raggiungibile soltanto da `/azienda/leadership/...` e una persona raggiungibile soltanto attraverso un indice sitemap annidato. L'API è in produzione sul deployment `dpl_AbKuQzEi6bpYJbgK3Nvi1LQFqQki`, stato `READY`, alias `api.replo.eu`. Chrome ha eseguito una ricerca autenticata reale da `replo.it`: HTTP 200, 36 siti ufficiali analizzati, un referente BISY con nome, ruolo, email, bozza completa e fonte pubblica; nessun errore console dell'origine e nessun errore runtime Vercel.
+
 ## Replo Business e monetizzazione API — 2026-07-18
 
 `https://replo.eu` è il portale API SaaS di Replo. Supporta registrazione e login Supabase, organizzazioni multi-account, selettore workspace, Stripe Checkout, Billing Portal e gestione autonoma delle chiavi API per `https://api.replo.eu`. Il listino pubblico è ora Startup (€7,90/mese), Partner (€49,90/mese) ed Enterprise (€247,90/mese); lo stato gratuito interno è mostrato come `Testing` e non può emettere chiavi.
@@ -13,10 +21,10 @@ La migrazione live ha convertito il precedente piano Pro in Partner senza perder
 Deploy di produzione:
 
 - Business `dpl_3NhAqp6CdUKJ8nqXG88YyHpexCw5` → `replo.eu`
-- API `dpl_BAtqckR5w2mRGWsdqREV6xp5VgrE` → `api.replo.eu`
+- API `dpl_AbKuQzEi6bpYJbgK3Nvi1LQFqQki` → `api.replo.eu`
 - Web `dpl_6yNWfKwyi7H6SEqnu389MCvDMHgS` → `replo.it`
 
-Tutti i deploy sono `READY`. Sono passati 42 test automatici, lint completo del monorepo, guardia anti-email-finder e build di business/API/web. Non sono presenti segreti in repository o documentazione. I soli limiti esterni rimasti sono documentati in [BLOCKERS.md](./BLOCKERS.md).
+Tutti i deploy sono `READY`. Sono passati 44 test automatici, lint completo del monorepo, guardia anti-email-finder e build di business/API/web. Non sono presenti segreti in repository o documentazione. I soli limiti esterni rimasti sono documentati in [BLOCKERS.md](./BLOCKERS.md).
 
 ## Outcome
 
@@ -29,7 +37,7 @@ The primary workflow starts from the user's product URL, not a mailing list. It 
 
 Candidate official sites are checked against an offer fingerprint before any person or email is accepted. A company presenting the same solution or an adjacent sales-training, coaching or enablement service is rejected as a competing vendor; a buyer definition explicitly naming that supplier category can override the exclusion. The API and Italian UI expose the inferred target, decision-makers and applied competitor policy so the interpretation is auditable.
 
-The search depth is adaptive: depending on the requested result count, the server receives a 63.5–90 second global research budget, expands up to 36 discovery bridges, checks individual sources with bounded timeouts, and verifies companies in batches of eight. Larger searches can inspect up to 54 official domains. Search continuation is measured against distinct qualified company accounts rather than raw emails. The web SDK allows 95 seconds for the complete response. Buyer-specific vertical queries and direct `/team`, `/chi-siamo` and `/azienda` role queries surface named decision-makers; negative supplier terms reduce agency/consultancy noise before official-site verification.
+The search depth is adaptive: depending on the requested result count, the server receives a 63.5–90 second global research budget, expands up to 36 discovery bridges, checks individual sources with bounded timeouts, and verifies companies in batches of eight. Larger searches can inspect up to 54 official domains. Every qualified domain then gets a bounded, depth-two official-site crawl of sitemap and multilingual identity pages, capped at 12 pages. Search continuation is measured against distinct qualified company accounts rather than raw emails. The web SDK allows 95 seconds for the complete response. Buyer-specific vertical queries and direct `/team`, `/chi-siamo` and `/azienda` role queries surface named decision-makers; negative supplier terms reduce agency/consultancy noise before official-site verification.
 
 Osservatori.net and curated maps of Italian tech communities are context-only inputs for market language and taxonomy. They are never crawled for names or addresses. The UI exposes the selected channels, their role and whether they produced useful intermediate evidence, so a zero-result search is explainable rather than a generic dead end.
 
@@ -66,10 +74,10 @@ Operational state is maintained in [OPS_STATE.md](./OPS_STATE.md).
 ## Production verification
 
 - Business deployment `dpl_3NhAqp6CdUKJ8nqXG88YyHpexCw5`: `READY`, aliased to `replo.eu`.
-- API deployment `dpl_BAtqckR5w2mRGWsdqREV6xp5VgrE`: `READY`, aliased to `api.replo.eu`.
+- API deployment `dpl_AbKuQzEi6bpYJbgK3Nvi1LQFqQki`: `READY`, aliased to `api.replo.eu`.
 - Web deployment `dpl_6yNWfKwyi7H6SEqnu389MCvDMHgS`: `READY`, aliased to `replo.it`.
 - TLS gate: Vercel reports `replo.eu` verified on the Edge Network with a renewable certificate. The operator workstation's Avast Web/Mail Shield had been replacing it locally and caused Chrome's “Non sicuro” label; a domain-only exception for `https://replo.eu/*` restored the public Let's Encrypt `YR2` certificate without disabling global HTTPS scanning. Chrome then reloaded `https://replo.eu/` with zero mixed resources.
-- Automated gates: 42 tests, full TypeScript lint, no-finder guard and production builds passed. Regression coverage includes all three entitlement configurations, Stripe price mapping, the strict public-demo host/route boundary, API-key hashing/authorization, AES-256-GCM credential round trips and the existing discovery controls.
+- Automated gates: 44 tests, full TypeScript lint, no-finder guard and production builds passed. Regression coverage includes depth-two official identity crawling, nested sitemap discovery, public email deobfuscation, all three entitlement configurations, Stripe price mapping, the strict public-demo host/route boundary, API-key hashing/authorization, AES-256-GCM credential round trips and the existing discovery controls.
 - Public-demo Chrome gate: an authenticated test session was closed, `/app/campaigns/new` loaded anonymously with HTTP 200, all four simulated stages completed, all three distinct example companies appeared, selecting FormaLab changed the recipient to `marco.desantis@formalab.example`, and the copy action confirmed the complete demo email. Anonymous `/app` and `/app/account` returned 307 to `/login`.
 - Chrome gate: the real production Italy search at limit 6 and without a buyer override scanned 36 official sites and returned two distinct company accounts, BISY and Globalsider, with one primary contact each and no duplicate account padding. The UI displayed “2 aziende compatibili” and the account-first policy. “Copia email completa” produced a 460-character payload containing `federico.stradi@bisy.it`, `Nome: Federico Stradi`, company, subject, `Ciao Federico`, sender `Michele` and signature `Fondatore · Replo`.
 - Production runtime gate: Vercel recorded HTTP 200 for the exercised API request and HTTP 200 for both exercised web requests. Build logs contain no errors and runtime error scans for both current deployments are empty.
